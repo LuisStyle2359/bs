@@ -5,11 +5,32 @@
   const ANZAHL = 15;
   const SPEICHER = "lernportal:fortschritt:v1";
   const THEMA = "lernportal:theme";
+  const ZULETZT = "lernportal:zuletzt";
+  const SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
   const TABS = [
-    { id: "lernstoff", name: "Lernstoff", feld: "kapitel" },
-    { id: "karten", name: "Karteikarten", feld: "karteikarten" },
-    { id: "quiz", name: "Quiz", feld: "quiz" },
+    {
+      id: "lernstoff",
+      name: "Lernstoff",
+      kurz: "Lernstoff",
+      feld: "kapitel",
+      icon: `${SVG}<path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg>`,
+    },
+    {
+      id: "karten",
+      name: "Karteikarten",
+      kurz: "Karten",
+      feld: "karteikarten",
+      icon: `${SVG}<rect x="2" y="7" width="16" height="13" rx="2"/><path d="M6 3h14a2 2 0 0 1 2 2v11"/></svg>`,
+    },
+    {
+      id: "quiz",
+      name: "Quiz",
+      kurz: "Quiz",
+      feld: "quiz",
+      icon: `${SVG}<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>`,
+    },
   ];
+  const ICON_UEBERSICHT = `${SVG}<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`;
   const BUCHSTABEN = "ABCDEFGHIJ";
 
   const ICON_MOND =
@@ -22,6 +43,8 @@
   let deck = null; // laufender Karteikarten-Stapel
   let quiz = null; // laufendes Quiz
   let loeschTimer = null;
+  let wisch = null; // laufende Wischgeste auf einer Karteikarte
+  let klickSperreBis = 0; // verhindert, dass nach dem Wischen die Karte umgedreht wird
 
   if (window.marked) window.marked.use({ gfm: true, breaks: true });
 
@@ -210,6 +233,13 @@
     }
     knopf.innerHTML = themaInhalt();
     knopf.setAttribute("aria-label", themaLabel());
+    setzeBrowserFarbe();
+  }
+
+  // Färbt die Browserleiste auf dem Handy passend zum gewählten Design.
+  function setzeBrowserFarbe() {
+    const farbe = getComputedStyle(document.documentElement).getPropertyValue("--papier").trim();
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => (m.content = farbe));
   }
 
   function allesLoeschen(knopf) {
@@ -225,6 +255,11 @@
     clearTimeout(loeschTimer);
     stand = {};
     speichern();
+    try {
+      localStorage.removeItem(ZULETZT);
+    } catch (e) {
+      /* egal */
+    }
     aktuell = null;
     deck = null;
     quiz = null;
@@ -241,8 +276,7 @@
     return `<li><a class="lf-kachel" href="#lf${lf.nr}" data-nr="${lf.nr}">
       <span class="lf-nr"><small>Lernfeld</small>${lf.nr}</span>
       <span class="lf-titel${lf.titel ? "" : " platzhalter"}">${esc(lf.titel || "Titel folgt")}</span>
-      <span class="lf-meta">${voll ? zaehler(lf) : "Inhalt folgt"}</span>
-      ${balken(anteil)}
+      <span class="lf-fuss"><span class="lf-meta">${voll ? zaehler(lf) : "Inhalt folgt"}</span>${balken(anteil)}</span>
       <span class="sr-only">${voll ? `Fortschritt ${prozent(anteil)}` : ""}</span>
     </a></li>`;
   }
@@ -262,6 +296,28 @@
         </section>`;
       })
       .join("");
+  }
+
+  function zuletztGelernt() {
+    try {
+      const z = JSON.parse(localStorage.getItem(ZULETZT));
+      if (z && z.nr >= 1 && z.nr <= ANZAHL) return z;
+    } catch (e) {
+      /* nichts gespeichert */
+    }
+    return null;
+  }
+
+  function weiterlernen() {
+    const z = zuletztGelernt();
+    const lf = z && lernfeld(z.nr);
+    if (!lf || !hatInhalt(lf)) return "";
+    const tab = TABS.find((t) => t.id === z.tab && lf[t.feld].length) || TABS.find((t) => lf[t.feld].length);
+    return `<a class="weiterlernen" href="#lf${lf.nr}-${tab.id}">
+      <span class="eyebrow">Weiterlernen</span>
+      <span class="wl-titel">LF ${lf.nr} · ${esc(titelVon(lf))}</span>
+      <span class="wl-meta">${tab.name} · ${prozent(fortschritt(lf))} gelernt</span>
+    </a>`;
   }
 
   function zeigeStart(vonNr) {
@@ -288,6 +344,7 @@
           <h1>Lernfelder</h1>
           <p class="lead">Such dir ein Lernfeld aus. Zu jedem gibt es Lernstoff zum Nachlesen, Karteikarten zum Abfragen und ein Quiz zum Testen.</p>
           <p class="stand">${standText}</p>
+          ${weiterlernen()}
         </section>
         ${jahrgaenge(lfs)}
       </main>
@@ -325,7 +382,7 @@
     if (neu) {
       deck = null;
       quiz = null;
-      app.innerHTML = `<div class="seite">
+      app.innerHTML = `<div class="seite mit-leiste">
         ${kopfzeile()}
         <main class="lf-seite">
           <a class="zurueck" href="#start">← Alle Lernfelder</a>
@@ -348,6 +405,10 @@
           </nav>
         </main>
         ${fusszeile()}
+        <nav class="unten-leiste" aria-label="Lernfeld">
+          <a class="unten-knopf" href="#start">${ICON_UEBERSICHT}<span>Übersicht</span></a>
+          ${TABS.map((t) => `<button type="button" class="unten-knopf" data-tab="${t.id}">${t.icon}<span>${t.kurz}</span></button>`).join("")}
+        </nav>
       </div>`;
       window.scrollTo(0, 0);
     }
@@ -357,11 +418,21 @@
       b.setAttribute("aria-selected", String(an));
       b.tabIndex = an ? 0 : -1;
     });
+    app.querySelectorAll(".unten-knopf[data-tab]").forEach((b) => {
+      if (b.dataset.tab === tab) b.setAttribute("aria-current", "page");
+      else b.removeAttribute("aria-current");
+    });
+    try {
+      localStorage.setItem(ZULETZT, JSON.stringify({ nr, tab }));
+    } catch (e) {
+      /* egal */
+    }
     zeigePanel();
     zeigeFortschritt(lf);
   }
 
-  function wechsleTab(tab, fokus) {
+  // scrollen: "immer" (Leiste unten) oder "wenn-verdeckt" (klebende Reiter oben)
+  function wechsleTab(tab, fokus, scrollen) {
     if (!aktuell) return;
     const hash = `#lf${aktuell.nr}-${tab}`;
     try {
@@ -372,6 +443,10 @@
     }
     zeigeLernfeld(aktuell.nr, tab);
     if (fokus) document.getElementById(`tab-${tab}`).focus();
+    const panel = document.getElementById("panel");
+    const reiter = app.querySelector(".tabs");
+    const verdeckt = reiter && panel.getBoundingClientRect().top < reiter.getBoundingClientRect().bottom;
+    if (scrollen === "immer" || (scrollen === "wenn-verdeckt" && verdeckt)) panel.scrollIntoView({ block: "start" });
   }
 
   function zeigeFortschritt(lf) {
@@ -507,8 +582,10 @@
           ? '<button type="button" class="knopf nochmal" data-aktion="nochmal">Nochmal</button><button type="button" class="knopf gewusst" data-aktion="gewusst">Gewusst</button>'
           : '<button type="button" class="knopf primaer" data-aktion="umdrehen">Antwort zeigen</button>'
       }</div>
-      <p class="tastenhinweis"><kbd>Leertaste</kbd> umdrehen · <kbd>←</kbd> nochmal · <kbd>→</kbd> gewusst</p>`;
+      <p class="tastenhinweis"><kbd>Leertaste</kbd> umdrehen · <kbd>←</kbd> nochmal · <kbd>→</kbd> gewusst</p>
+      <p class="wischhinweis">${hinten ? "Nach rechts wischen = gewusst · nach links = nochmal" : "Tippe auf die Karte, um sie umzudrehen"}</p>`;
     if (opt.fokus) el.querySelector(".karteikarte").focus({ preventScroll: true });
+    if (opt.aktionenZeigen) el.querySelector(".karte-aktionen .knopf").scrollIntoView({ block: "nearest" });
   }
 
   function umdrehen() {
@@ -516,11 +593,11 @@
     const karte = app.querySelector(".karteikarte");
     deck.umgedreht = !deck.umgedreht;
     if (!karte || bewegungReduziert()) {
-      zeigePanel({ fokus: true });
+      zeigePanel({ fokus: true, aktionenZeigen: true });
       return;
     }
     karte.classList.add("kippt-weg");
-    setTimeout(() => zeigePanel({ fokus: true, animation: "kippt-her" }), 150);
+    setTimeout(() => zeigePanel({ fokus: true, animation: "kippt-her", aktionenZeigen: true }), 150);
   }
 
   function bewerte(gewusst) {
@@ -689,7 +766,10 @@
     quiz.beantwortet = true;
     zeigePanel();
     const weiter = app.querySelector('[data-aktion="quiz-weiter"]');
-    if (weiter) weiter.focus({ preventScroll: true });
+    if (weiter) {
+      weiter.focus({ preventScroll: true });
+      weiter.scrollIntoView({ block: "nearest" });
+    }
   }
 
   function quizWeiter() {
@@ -708,8 +788,15 @@
       zeigeFortschritt(lf);
     }
     zeigePanel();
+    panelNachOben();
+  }
+
+  // Holt die Frage nach oben, damit sie auf dem Handy nicht unter dem Lernfeld-Kopf startet.
+  function panelNachOben() {
     const panel = document.getElementById("panel");
-    if (panel && panel.getBoundingClientRect().top < 0) panel.scrollIntoView({ block: "start" });
+    if (!panel) return;
+    const oben = panel.getBoundingClientRect().top;
+    if (oben < 0 || oben > window.innerHeight * 0.25) panel.scrollIntoView({ block: "start" });
   }
 
   // ---------- Steuerung ----------
@@ -717,11 +804,12 @@
   app.addEventListener("click", (e) => {
     const tabKnopf = e.target.closest("[data-tab]");
     if (tabKnopf) {
-      wechsleTab(tabKnopf.dataset.tab);
+      wechsleTab(tabKnopf.dataset.tab, false, tabKnopf.closest(".unten-leiste") ? "immer" : "wenn-verdeckt");
       return;
     }
     const el = e.target.closest("[data-aktion]");
     if (!el || el.disabled) return;
+    if (el.dataset.aktion === "umdrehen" && Date.now() < klickSperreBis) return;
     const lf = aktuell ? lernfeld(aktuell.nr) : null;
 
     switch (el.dataset.aktion) {
@@ -769,10 +857,12 @@
       case "quiz-start":
         starteQuiz(lf, false);
         zeigePanel();
+        panelNachOben();
         break;
       case "quiz-falsche":
         starteQuiz(lf, true);
         zeigePanel();
+        panelNachOben();
         break;
       case "quiz-wahl":
         quizWahl(Number(el.dataset.j));
@@ -834,6 +924,64 @@
     }
   });
 
+  // ---------- Wischen auf Karteikarten (Touch) ----------
+
+  app.addEventListener("pointerdown", (e) => {
+    const karte = e.target.closest(".karteikarte");
+    if (!karte || e.pointerType === "mouse" || !deck || !deck.umgedreht) return;
+    wisch = { id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, karte, aktiv: false };
+  });
+
+  app.addEventListener("pointermove", (e) => {
+    if (!wisch || e.pointerId !== wisch.id) return;
+    const dx = e.clientX - wisch.x0;
+    const dy = e.clientY - wisch.y0;
+    if (!wisch.aktiv) {
+      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) {
+        wisch = null; // senkrecht: die Seite scrollt
+        return;
+      }
+      if (Math.abs(dx) < 12) return;
+      wisch.aktiv = true;
+      wisch.karte.classList.add("wischt");
+      try {
+        wisch.karte.setPointerCapture(e.pointerId);
+      } catch (err) {
+        /* egal */
+      }
+    }
+    wisch.dx = dx;
+    wisch.karte.style.transform = `translateX(${dx}px) rotate(${dx / 25}deg)`;
+    wisch.karte.dataset.richtung = dx > 60 ? "gewusst" : dx < -60 ? "nochmal" : "";
+  });
+
+  function wischEnde(e) {
+    if (!wisch || e.pointerId !== wisch.id) return;
+    const { karte, dx, aktiv } = wisch;
+    wisch = null;
+    if (!aktiv) return;
+    klickSperreBis = Date.now() + 400;
+    karte.classList.remove("wischt");
+    if (e.type === "pointerup" && Math.abs(dx) > 90) {
+      const gewusst = dx > 0;
+      if (bewegungReduziert()) {
+        bewerte(gewusst);
+        return;
+      }
+      karte.style.transition = "transform 0.2s ease-in, opacity 0.2s";
+      karte.style.transform = `translateX(${gewusst ? 120 : -120}%) rotate(${gewusst ? 12 : -12}deg)`;
+      karte.style.opacity = "0";
+      setTimeout(() => bewerte(gewusst), 200);
+    } else {
+      karte.style.transition = "transform 0.2s";
+      karte.style.transform = "";
+      karte.dataset.richtung = "";
+    }
+  }
+
+  app.addEventListener("pointerup", wischEnde);
+  app.addEventListener("pointercancel", wischEnde);
+
   function route() {
     const treffer = /^#lf(\d{1,2})(?:-(lernstoff|karten|quiz))?$/.exec(location.hash);
     const nr = treffer ? Number(treffer[1]) : 0;
@@ -842,5 +990,12 @@
   }
 
   window.addEventListener("hashchange", route);
+  if (document.documentElement.dataset.theme) setzeBrowserFarbe();
   route();
+
+  // Offline-Modus: nur in der veröffentlichten Seite (mit Web-App-Manifest), nicht lokal als Datei.
+  const sicher = location.protocol === "https:" || location.hostname === "localhost";
+  if ("serviceWorker" in navigator && sicher && document.querySelector('link[rel="manifest"]')) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
 })();

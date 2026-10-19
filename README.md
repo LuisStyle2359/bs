@@ -8,6 +8,16 @@ Eine Lernseite für die Klasse 10KU, Kaufleute für Spedition und Logistikdienst
 
 Der Lernfortschritt wird nur im eigenen Browser gespeichert (localStorage). Es gibt keine Anmeldung und keinen Server.
 
+## Auf Handy und iPad
+
+Die Seite ist fürs Handy gebaut:
+
+- Auf dem Handy sitzt die Navigation unten (Übersicht, Lernstoff, Karten, Quiz), damit man sie mit dem Daumen erreicht.
+- Karteikarten: antippen zum Umdrehen, dann nach rechts wischen = gewusst, nach links = nochmal.
+- Auf der Startseite führt „Weiterlernen“ direkt zum zuletzt geöffneten Lernfeld.
+- **Als App speichern:** Auf dem iPhone/iPad in Safari auf *Teilen → Zum Home-Bildschirm*, auf Android im Chrome-Menü *Zum Startbildschirm hinzufügen*. Dann öffnet sich die Seite wie eine App ohne Browserleiste.
+- **Offline:** Nach dem ersten Öffnen über GitHub Pages funktioniert die Seite auch ohne Internet, mit dem Stand vom letzten Laden.
+
 ## Seite öffnen
 
 - **Lokal:** `index.html` doppelklicken. Es wird nichts installiert und nichts gebaut.
@@ -17,8 +27,11 @@ Der Lernfortschritt wird nur im eigenen Browser gespeichert (localStorage). Es g
 
 ```
 index.html          Seite (lädt alles Weitere)
+manifest.webmanifest  Angaben für „Zum Home-Bildschirm“
+sw.js               Offline-Modus
 assets/style.css    Aussehen
 assets/app.js       Logik: Startseite, Lernfeld-Seite, Karteikarten, Quiz
+assets/icons/       App-Symbole
 assets/vendor/      marked (Markdown → HTML), MIT-Lizenz
 daten/config.js     Name der Seite, Beruf, Klasse
 daten/lf01.js       Inhalt Lernfeld 1

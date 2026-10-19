@@ -75,11 +75,14 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  /* Als App vom Home-Bildschirm gestartet liegt die Seite unter der Statusleiste. */
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 body {
   margin: 0;
-  min-height: 100vh;
+  overflow-x: clip;
   background-color: var(--papier);
   background-image:
     linear-gradient(var(--karo) 1px, transparent 1px),
@@ -89,6 +92,21 @@ body {
   font: 400 1.0625rem/1.6 var(--schrift-text);
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  z-index: 30;
+  background: var(--papier);
+}
+
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
 }
 
 h1,
@@ -183,6 +201,10 @@ img {
 
 .marke:hover {
   color: var(--tinte);
+}
+
+.kopfzeile .thema-knopf {
+  min-height: 40px;
 }
 
 .thema-knopf {
@@ -314,7 +336,7 @@ img {
 .lf-kachel {
   height: 100%;
   display: grid;
-  grid-template-rows: auto 1fr auto auto;
+  grid-template-rows: auto 1fr auto;
   gap: 8px;
   padding: 14px 16px 16px;
   background: var(--flaeche);
@@ -328,10 +350,17 @@ img {
     box-shadow 0.15s;
 }
 
-.lf-kachel:hover {
+@media (hover: hover) {
+  .lf-kachel:hover {
+    border-color: var(--tinte);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px var(--schatten);
+  }
+}
+
+.lf-kachel:active {
   border-color: var(--tinte);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px var(--schatten);
+  transform: scale(0.98);
 }
 
 .lf-nr {
@@ -367,6 +396,11 @@ img {
   font-style: italic;
 }
 
+.lf-fuss {
+  display: grid;
+  gap: 8px;
+}
+
 .lf-meta {
   font-size: 0.875rem;
   color: var(--text-2);
@@ -388,35 +422,137 @@ img {
   transition: width 0.3s;
 }
 
-@media (max-width: 960px) {
-  .lf-raster {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+.weiterlernen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 16px;
+  max-width: 38rem;
+  padding: 14px 18px;
+  border: 1px solid var(--tinte);
+  border-radius: var(--radius);
+  background: var(--flaeche);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.weiterlernen .eyebrow {
+  color: var(--tinte);
+}
+
+.wl-titel {
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.wl-meta {
+  font-size: 0.9375rem;
+  color: var(--text-2);
+}
+
+.weiterlernen::after,
+.lf-kachel::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+}
+
+.weiterlernen::after {
+  grid-column: 2;
+  grid-row: 1 / 4;
+  color: var(--tinte);
+}
+
+.lf-kachel::after {
+  display: none;
+}
+
+.weiterlernen:active {
+  transform: scale(0.98);
 }
 
 @media (max-width: 600px) {
+  .start {
+    gap: 24px;
+  }
+
+  .intro h1 {
+    font-size: 2.5rem;
+  }
+
+  .lead {
+    font-size: 1.0625rem;
+  }
+}
+
+/* Handy und iPad hochkant: Lernfelder als kompakte Liste mit Nummer links. */
+@media (max-width: 960px) {
   .lf-raster {
     grid-template-columns: 1fr;
     gap: 8px;
   }
 
   .lf-kachel {
-    grid-template-columns: 3.25rem minmax(0, 1fr);
-    grid-template-rows: auto auto auto;
-    column-gap: 14px;
-    row-gap: 4px;
-    padding: 12px 14px;
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 6px;
+    padding: 12px 16px 12px 12px;
+  }
+
+  .lf-kachel::after {
+    display: block;
+    grid-column: 3;
+    grid-row: 1 / 3;
+    color: var(--text-2);
   }
 
   .lf-nr {
-    grid-row: 1 / 4;
-    align-self: center;
-    font-size: 2.5rem;
+    grid-row: 1 / 3;
+    font-size: 2.25rem;
     text-align: center;
   }
 
   .lf-nr small {
-    font-size: 0.6875rem;
+    display: none;
+  }
+
+  .lf-titel {
+    line-height: 1.25;
+  }
+
+  .lf-fuss {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .lf-fuss .balken {
+    flex: 1;
+    max-width: 6rem;
+  }
+}
+
+@media (min-width: 601px) and (max-width: 960px) {
+  .lf-kachel {
+    grid-template-columns: 3rem minmax(0, 1fr) auto;
+    padding: 14px 20px 14px 14px;
+  }
+
+  .lf-nr {
+    font-size: 2.5rem;
+  }
+
+  .lf-titel {
+    font-size: 1.125rem;
+  }
+
+  .lf-fuss .balken {
+    max-width: 10rem;
   }
 }
 
@@ -447,8 +583,9 @@ img {
 }
 
 .lf-kopf h1 {
-  font-size: clamp(2.25rem, 6vw, 3.25rem);
-  line-height: 1;
+  font-size: clamp(1.875rem, 6vw, 3.25rem);
+  line-height: 1.02;
+  hyphens: auto;
 }
 
 .lf-kopf .platzhalter {
@@ -527,6 +664,90 @@ img {
   display: grid;
   gap: 20px;
   min-width: 0;
+  scroll-margin-top: calc(64px + env(safe-area-inset-top, 0px));
+}
+
+@media (min-width: 700px) {
+  .tabs {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 10;
+    background: var(--papier);
+  }
+}
+
+.unten-leiste {
+  display: none;
+}
+
+/* Handy: Navigation unten, mit dem Daumen erreichbar. */
+@media (max-width: 699px) {
+  .tabs {
+    display: none;
+  }
+
+  .seite.mit-leiste {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .panel {
+    scroll-margin-top: 12px;
+  }
+
+  .panel .knopf,
+  .panel .karteikarte {
+    scroll-margin-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .unten-leiste {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    padding-top: 6px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    padding-left: max(8px, env(safe-area-inset-left, 0px));
+    padding-right: max(8px, env(safe-area-inset-right, 0px));
+    background: var(--flaeche);
+    border-top: 1px solid var(--linie);
+    box-shadow: 0 -4px 16px var(--schatten);
+  }
+}
+
+.unten-knopf {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  min-height: 54px;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--text-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.unten-knopf svg {
+  width: 24px;
+  height: 24px;
+}
+
+.unten-knopf[aria-current="page"] {
+  color: var(--tinte);
+  background: var(--tinte-hell);
+}
+
+.unten-knopf:active {
+  background: var(--flaeche-2);
 }
 
 .leer {
@@ -609,8 +830,19 @@ img {
   text-decoration: none;
 }
 
-.knopf:hover {
-  border-color: var(--text-2);
+@media (hover: hover) {
+  .knopf:hover {
+    border-color: var(--text-2);
+  }
+}
+
+.knopf:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.knopf:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .knopf.primaer {
@@ -683,7 +915,8 @@ img {
 }
 
 .toc button {
-  padding: 2px 0;
+  min-height: 36px;
+  padding: 4px 0;
   border: 0;
   background: none;
   color: var(--tinte);
@@ -875,7 +1108,52 @@ img {
   box-shadow: 0 4px 16px var(--schatten);
   cursor: pointer;
   user-select: none;
+  -webkit-user-select: none;
   min-width: 0;
+  position: relative;
+  touch-action: pan-y;
+}
+
+.karteikarte.wischt {
+  transition: none;
+}
+
+.karteikarte[data-richtung="gewusst"] {
+  border-color: var(--gruen);
+}
+
+.karteikarte[data-richtung="nochmal"] {
+  border-color: var(--rot);
+}
+
+/* Stempel beim Wischen */
+.karteikarte[data-richtung="gewusst"]::after,
+.karteikarte[data-richtung="nochmal"]::after {
+  position: absolute;
+  top: 52px;
+  padding: 2px 10px;
+  border: 3px solid currentColor;
+  border-radius: 6px;
+  font-family: var(--schrift-titel);
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--flaeche);
+}
+
+.karteikarte[data-richtung="gewusst"]::after {
+  content: "Gewusst";
+  left: 16px;
+  color: var(--gruen);
+  transform: rotate(-8deg);
+}
+
+.karteikarte[data-richtung="nochmal"]::after {
+  content: "Nochmal";
+  right: 16px;
+  color: var(--rot);
+  transform: rotate(8deg);
 }
 
 .karte-kopf {
@@ -953,6 +1231,42 @@ img {
 
 .karte-aktionen .knopf {
   min-width: 9rem;
+  min-height: 48px;
+}
+
+.wischhinweis {
+  display: none;
+  margin: -6px 0 0;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-2);
+}
+
+@media (hover: none), (pointer: coarse) {
+  .wischhinweis {
+    display: block;
+  }
+}
+
+@media (max-width: 600px) {
+  .karte-aktionen .knopf {
+    flex: 1;
+    min-width: 0;
+    min-height: 54px;
+    font-size: 1.0625rem;
+  }
+
+  .karteikarte {
+    min-height: min(52vh, 380px);
+  }
+
+  .karte-text {
+    padding-inline: 16px;
+  }
+
+  .karte-kopf {
+    padding-inline: 16px;
+  }
 }
 
 .tastenhinweis {
@@ -972,7 +1286,7 @@ kbd {
   font-size: 0.8125rem;
 }
 
-@media (hover: none) {
+@media (hover: none), (pointer: coarse) {
   .tastenhinweis {
     display: none;
   }
@@ -1030,10 +1344,17 @@ kbd {
   background: var(--flaeche);
   text-align: left;
   cursor: pointer;
+  min-height: 52px;
 }
 
-.option:hover:not(:disabled) {
-  border-color: var(--tinte);
+@media (hover: hover) {
+  .option:hover:not(:disabled) {
+    border-color: var(--tinte);
+  }
+}
+
+.option:active:not(:disabled) {
+  transform: scale(0.99);
 }
 
 .option:disabled {
@@ -1165,5 +1486,28 @@ kbd {
   *::after {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* Handy: Hauptknöpfe im Quiz über die ganze Breite */
+@media (max-width: 600px) {
+  .block {
+    padding: 18px 16px;
+  }
+
+  .block > .knopf,
+  .knopfreihe .knopf {
+    justify-self: stretch;
+    flex: 1 1 100%;
+    min-height: 52px;
+  }
+
+  .leiste-knoepfe {
+    width: 100%;
+  }
+
+  .leiste-knoepfe .knopf {
+    flex: 1;
+    min-height: 40px;
   }
 }
