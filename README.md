@@ -96,5 +96,6 @@ Hinweise:
 - Texte in `text`, `vorne`, `hinten`, `frage` und `erklaerung` sind [Markdown](https://www.markdownguide.org/basic-syntax/): `**fett**`, Listen mit `-`, Tabellen, Zitate mit `>` (werden als Merke-Kasten angezeigt).
 - Bilder in einen Ordner wie `bilder/lf03/` legen und im Text mit `![Beschreibung](bilder/lf03/bohrer.png)` einbinden.
 - Der Fortschritt hängt am Kapiteltitel bzw. an der Vorderseite einer Karteikarte. Wenn du diese Texte änderst, gilt die Karte oder das Kapitel wieder als neu.
+- **Tests** stehen oben auf der Startseite mit Countdown („Test morgen“). Jeder Test hat eine eigene Datei `daten/test-<id>.js` und wird mit `test("<id>", { titel, datum: "JJJJ-MM-TT", … })` angelegt (Script-Tag in `index.html` und Eintrag in `sw.js` nicht vergessen). Ein Test kann zusätzlich `konten` und `buchungen` haben, dann gibt es den Bereich **Buchungssätze üben** (Soll an Haben), siehe `daten/test-bestandskonten.js`.
 - `jahr` ist das Lehrjahr (LJ), in dem ihr das Lernfeld an eurer Schule habt. Sobald es bei einem Lernfeld eingetragen ist, sortiert die Startseite nach LJ. Bei `0` stehen die Lernfelder einfach der Reihe nach.
 - Name, Beruf und Klasse stehen in `daten/config.js`.

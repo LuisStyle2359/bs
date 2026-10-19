@@ -16,6 +16,13 @@
       icon: `${SVG}<path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg>`,
     },
     {
+      id: "buchen",
+      name: "Buchungssätze",
+      kurz: "Buchen",
+      feld: "buchungen", // nur sichtbar, wenn Buchungssätze eingetragen sind
+      icon: `${SVG}<path d="M4 6h16M4 12h9M4 18h6"/><path d="m15 17 2 2 4-4"/></svg>`,
+    },
+    {
       id: "karten",
       name: "Karteikarten",
       kurz: "Karten",
@@ -37,7 +44,7 @@
       icon: `${SVG}<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>`,
     },
   ];
-  const ICON_BLITZ = TABS[3].icon;
+  const ICON_BLITZ = TABS.find((t) => t.id === "spiel").icon;
   const ICON_UEBERSICHT = `${SVG}<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`;
   const BUCHSTABEN = "ABCDEFGHIJ";
 
@@ -51,6 +58,7 @@
   let deck = null; // laufender Karteikarten-Stapel
   let quiz = null; // laufendes Quiz
   let spiel = null; // laufende Blitzrunde
+  let buchen = null; // laufende Runde „Buchungssätze üben“
   let spielTimer = null;
   let loeschTimer = null;
   let wisch = null; // laufende Wischgeste auf einer Karteikarte
@@ -144,16 +152,22 @@
 
   // ---------- Daten ----------
 
+  // Lernfelder haben eine Zahl als nr, Tests ihre id (Text).
   function lernfeld(nr) {
-    const d = P.lernfelder[nr] || {};
+    const istTest = typeof nr === "string";
+    const d = (istTest ? (P.tests || {})[nr] : P.lernfelder[nr]) || {};
     return {
       nr,
+      test: istTest,
+      datum: istTest ? String(d.datum || "") : "",
       titel: String(d.titel || "").trim(),
       jahr: Number(d.jahr) || 0,
       beschreibung: String(d.beschreibung || "").trim(),
       kapitel: d.kapitel || [],
       karteikarten: d.karteikarten || [],
       quiz: d.quiz || [],
+      buchungen: d.buchungen || [],
+      konten: { aktiv: [], passiv: [], ...(d.konten || {}) },
     };
   }
 
@@ -161,17 +175,55 @@
     return Array.from({ length: ANZAHL }, (_, i) => lernfeld(i + 1));
   }
 
+  // Anstehende Tests zuerst (nächster oben), vergangene danach.
+  function alleTests() {
+    const tests = Object.keys(P.tests || {}).map(lernfeld);
+    const tage = (t) => (t.datum ? tageBis(t.datum) : 9999);
+    return tests.sort((a, b) => {
+      const ta = tage(a);
+      const tb = tage(b);
+      if (ta < 0 !== tb < 0) return ta < 0 ? 1 : -1;
+      return ta < 0 ? tb - ta : ta - tb;
+    });
+  }
+
+  function seitenHash(lf) {
+    return lf.test ? `#test-${lf.nr}` : `#lf${lf.nr}`;
+  }
+
+  function datumObjekt(datum) {
+    const [jahr, monat, tag] = datum.split("-").map(Number);
+    return new Date(jahr, monat - 1, tag);
+  }
+
+  function tageBis(datum) {
+    const heute = new Date();
+    heute.setHours(0, 0, 0, 0);
+    return Math.round((datumObjekt(datum) - heute) / 86400000);
+  }
+
+  function wannText(datum) {
+    if (!datum) return "Test";
+    const tag = datumObjekt(datum).toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "numeric" });
+    const tage = tageBis(datum);
+    if (tage === 0) return `Test heute · ${tag}`;
+    if (tage === 1) return `Test morgen · ${tag}`;
+    if (tage > 1) return `Test in ${tage} Tagen · ${tag}`;
+    return `Test war am ${tag}`;
+  }
+
   function hatInhalt(lf) {
-    return lf.kapitel.length + lf.karteikarten.length + lf.quiz.length > 0;
+    return lf.kapitel.length + lf.karteikarten.length + lf.quiz.length + lf.buchungen.length > 0;
   }
 
   function titelVon(lf) {
-    return lf.titel || `Lernfeld ${lf.nr}`;
+    return lf.titel || (lf.test ? "Test" : `Lernfeld ${lf.nr}`);
   }
 
   function zaehler(lf) {
     const teile = [];
     if (lf.kapitel.length) teile.push(anzahlText(lf.kapitel.length, "Kapitel", "Kapitel"));
+    if (lf.buchungen.length) teile.push(anzahlText(lf.buchungen.length, "Buchungssatz", "Buchungssätze"));
     if (lf.karteikarten.length) teile.push(anzahlText(lf.karteikarten.length, "Karte", "Karten"));
     if (lf.quiz.length) teile.push(anzahlText(lf.quiz.length, "Frage", "Fragen"));
     return teile.join(" · ");
@@ -196,6 +248,7 @@
       teile.push((lf.karteikarten.length - offeneKarten(lf)) / lf.karteikarten.length);
     }
     if (lf.quiz.length) teile.push(s.quizBest || 0);
+    if (lf.buchungen.length) teile.push(s.buchenBest || 0);
     return teile.length ? teile.reduce((a, b) => a + b, 0) / teile.length : null;
   }
 
@@ -274,6 +327,7 @@
     deck = null;
     quiz = null;
     spiel = null;
+    buchen = null;
     route();
     const hinweis = document.querySelector(".fusszeile p");
     if (hinweis) hinweis.textContent = "Dein Fortschritt wurde gelöscht.";
@@ -320,10 +374,28 @@
       .join("");
   }
 
+  function testBereich() {
+    const tests = alleTests();
+    if (!tests.length) return "";
+    const karten = tests
+      .map((t) => {
+        const vorbei = t.datum && tageBis(t.datum) < 0;
+        return `<a class="test-karte${vorbei ? " vorbei" : ""}" href="${seitenHash(t)}" data-nr="${t.nr}">
+          <span class="test-wann">${esc(wannText(t.datum))}</span>
+          <span class="test-titel">${esc(titelVon(t))}</span>
+          <span class="lf-fuss"><span class="lf-meta">${zaehler(t)}</span>${balken(fortschritt(t))}</span>
+        </a>`;
+      })
+      .join("");
+    return `<section class="tests" aria-label="Tests">${karten}</section>`;
+  }
+
   function zuletztGelernt() {
     try {
       const z = JSON.parse(localStorage.getItem(ZULETZT));
-      if (z && z.nr >= 1 && z.nr <= ANZAHL) return z;
+      const lfOk = typeof z?.nr === "number" && z.nr >= 1 && z.nr <= ANZAHL;
+      const testOk = typeof z?.nr === "string" && (P.tests || {})[z.nr];
+      if (lfOk || testOk) return z;
     } catch (e) {
       /* nichts gespeichert */
     }
@@ -334,10 +406,11 @@
     const z = zuletztGelernt();
     const lf = z && lernfeld(z.nr);
     if (!lf || !hatInhalt(lf)) return "";
-    const tab = TABS.find((t) => t.id === z.tab && tabHatInhalt(lf, t)) || TABS.find((t) => tabHatInhalt(lf, t));
-    return `<a class="weiterlernen" href="#lf${lf.nr}-${tab.id}">
+    const tabs = sichtbareTabs(lf);
+    const tab = tabs.find((t) => t.id === z.tab && tabHatInhalt(lf, t)) || tabs.find((t) => tabHatInhalt(lf, t));
+    return `<a class="weiterlernen" href="${seitenHash(lf)}-${tab.id}">
       <span class="eyebrow">Weiterlernen</span>
-      <span class="wl-titel">LF ${lf.nr} · ${esc(titelVon(lf))}</span>
+      <span class="wl-titel">${lf.test ? "Test" : `LF ${lf.nr}`} · ${esc(titelVon(lf))}</span>
       <span class="wl-meta">${tab.name} · ${prozent(fortschritt(lf))} gelernt</span>
     </a>`;
   }
@@ -347,6 +420,7 @@
     deck = null;
     quiz = null;
     spiel = null;
+    buchen = null;
     document.title = P.name;
 
     const lfs = alleLernfelder();
@@ -362,6 +436,7 @@
     app.innerHTML = `<div class="seite">
       ${kopfzeile()}
       <main class="start">
+        ${testBereich()}
         <section class="intro">
           <p class="eyebrow">${esc(unterzeile)}</p>
           <h1>Lernfelder</h1>
@@ -374,7 +449,7 @@
       ${fusszeile()}
     </div>`;
 
-    const ziel = vonNr && app.querySelector(`.lf-kachel[data-nr="${vonNr}"]`);
+    const ziel = vonNr && app.querySelector(`.lf-kachel[data-nr="${vonNr}"], .test-karte[data-nr="${vonNr}"]`);
     if (ziel) {
       ziel.scrollIntoView({ block: "center" });
       ziel.focus({ preventScroll: true });
@@ -389,8 +464,12 @@
     return t.feld ? lf[t.feld].length > 0 : hatSpiel(lf);
   }
 
+  function sichtbareTabs(lf) {
+    return TABS.filter((t) => t.id !== "buchen" || lf.buchungen.length > 0);
+  }
+
   function standardTab(lf) {
-    const mitInhalt = TABS.find((t) => tabHatInhalt(lf, t));
+    const mitInhalt = sichtbareTabs(lf).find((t) => tabHatInhalt(lf, t));
     return mitInhalt ? mitInhalt.id : "lernstoff";
   }
 
@@ -401,6 +480,7 @@
 
   function zeigeLernfeld(nr, tab) {
     const lf = lernfeld(nr);
+    const tabs = sichtbareTabs(lf);
     tab = tab || standardTab(lf);
     const neu = !aktuell || aktuell.nr !== nr;
     aktuell = { nr, tab };
@@ -410,33 +490,39 @@
       deck = null;
       quiz = null;
       spiel = null;
+      buchen = null;
+      const eyebrow = lf.test ? esc(wannText(lf.datum)) : `LF ${nr} von ${ANZAHL}${lf.jahr ? ` · LJ ${lf.jahr}` : ""}`;
       app.innerHTML = `<div class="seite mit-leiste">
         ${kopfzeile()}
         <main class="lf-seite">
-          <a class="zurueck" href="#start">← Alle Lernfelder</a>
+          <a class="zurueck" href="#start">${lf.test ? "← Übersicht" : "← Alle Lernfelder"}</a>
           <header class="lf-kopf">
-            <p class="eyebrow">LF ${nr} von ${ANZAHL}${lf.jahr ? ` · LJ ${lf.jahr}` : ""}</p>
+            <p class="eyebrow">${eyebrow}</p>
             <h1>${esc(titelVon(lf))}</h1>
             ${lf.beschreibung ? `<p class="lead">${esc(lf.beschreibung)}</p>` : ""}
             <div class="lf-fortschritt" id="lf-fortschritt"></div>
             ${hatSpiel(lf) ? `<button type="button" class="knopf blitz-start" data-tab="spiel">${ICON_BLITZ}<span>Blitzrunde spielen</span></button>` : ""}
           </header>
           <div class="tabs" role="tablist" aria-label="Lernbereiche">
-            ${TABS.map(
+            ${tabs.map(
               (t) =>
                 `<button type="button" role="tab" id="tab-${t.id}" aria-controls="panel" data-tab="${t.id}">${t.name}${t.feld ? `<span class="anzahl">${lf[t.feld].length}</span>` : ""}</button>`,
             ).join("")}
           </div>
           <section class="panel" id="panel" role="tabpanel"></section>
-          <nav class="nachbarn" aria-label="Weitere Lernfelder">
+          ${
+            lf.test
+              ? ""
+              : `<nav class="nachbarn" aria-label="Weitere Lernfelder">
             ${nachbarLink(nr - 1, "zurueck-lf", `← Lernfeld ${nr - 1}`)}
             ${nachbarLink(nr + 1, "weiter", `Lernfeld ${nr + 1} →`)}
-          </nav>
+          </nav>`
+          }
         </main>
         ${fusszeile()}
-        <nav class="unten-leiste" aria-label="Lernfeld">
+        <nav class="unten-leiste" aria-label="Lernbereiche" data-spalten="${tabs.length + 1}" style="--spalten:${tabs.length + 1}">
           <a class="unten-knopf" href="#start">${ICON_UEBERSICHT}<span>Übersicht</span></a>
-          ${TABS.map((t) => `<button type="button" class="unten-knopf" data-tab="${t.id}">${t.icon}<span>${t.kurz}</span></button>`).join("")}
+          ${tabs.map((t) => `<button type="button" class="unten-knopf" data-tab="${t.id}">${t.icon}<span>${t.kurz}</span></button>`).join("")}
         </nav>
       </div>`;
       window.scrollTo(0, 0);
@@ -463,7 +549,7 @@
   // scrollen: "immer" (Leiste unten) oder "wenn-verdeckt" (klebende Reiter oben)
   function wechsleTab(tab, fokus, scrollen) {
     if (!aktuell) return;
-    const hash = `#lf${aktuell.nr}-${tab}`;
+    const hash = `${seitenHash(lernfeld(aktuell.nr))}-${tab}`;
     try {
       history.replaceState(null, "", hash);
     } catch (e) {
@@ -495,6 +581,7 @@
     if (aktuell.tab === "karten") panelKarten(lf, panel, opt || {});
     else if (aktuell.tab === "quiz") panelQuiz(lf, panel);
     else if (aktuell.tab === "spiel") panelSpiel(lf, panel);
+    else if (aktuell.tab === "buchen") panelBuchen(lf, panel);
     else panelLernstoff(lf, panel);
   }
 
@@ -502,11 +589,15 @@
     const texte = {
       lernstoff: [
         "Noch kein Lernstoff",
-        `Für Lernfeld ${lf.nr} ist noch kein Lernstoff da. Sobald er eingetragen ist, findest du ihn hier in Kapiteln zum Nachlesen.`,
+        `Für ${lf.test ? "diesen Test" : `Lernfeld ${lf.nr}`} ist noch kein Lernstoff da. Sobald er eingetragen ist, findest du ihn hier in Kapiteln zum Nachlesen.`,
       ],
       karten: [
         "Noch keine Karteikarten",
         "Hier fragst du dich später selbst ab: Frage lesen, Karte umdrehen, ehrlich sagen, ob du es wusstest.",
+      ],
+      buchen: [
+        "Noch keine Buchungssätze",
+        "Hier übst du Buchungssätze (Soll an Haben), sobald welche eingetragen sind.",
       ],
       spiel: [
         "Noch keine Blitzrunde",
@@ -834,6 +925,247 @@
     if (oben < 0 || oben > window.innerHeight * 0.25) panel.scrollIntoView({ block: "start" });
   }
 
+  // ---------- Buchungssätze üben ----------
+
+  function kontenListe(lf) {
+    return [...lf.konten.aktiv, ...lf.konten.passiv].sort((a, b) => a.localeCompare(b, "de"));
+  }
+
+  function kontoArt(lf, konto) {
+    return lf.konten.passiv.includes(konto) ? "Passivkonto" : "Aktivkonto";
+  }
+
+  // Aktivkonto im Soll oder Passivkonto im Haben = Zugang, sonst Abgang.
+  function zugangOderAbgang(lf, konto, seite) {
+    return (kontoArt(lf, konto) === "Aktivkonto") === (seite === "Soll") ? "Zugang" : "Abgang";
+  }
+
+  function euro(betrag) {
+    return `${Number(betrag).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  }
+
+  function istEinfach(b) {
+    return b.soll.length === 1 && b.haben.length === 1;
+  }
+
+  function buchungssatzText(b) {
+    return `${b.soll.map((z) => z[0]).join(", ")} an ${b.haben.map((z) => z[0]).join(", ")}`;
+  }
+
+  function herleitungText(lf, b) {
+    const teil = (konto, seite) => `${konto} (${kontoArt(lf, konto)}, ${zugangOderAbgang(lf, konto, seite)}) im ${seite}`;
+    return `${teil(b.soll[0][0], "Soll")} an ${teil(b.haben[0][0], "Haben")}.`;
+  }
+
+  function starteBuchen(lf, art) {
+    const alle = lf.buchungen.map((_, i) => i);
+    const einfach = mischen(alle.filter((i) => istEinfach(lf.buchungen[i])));
+    const zusammen = mischen(alle.filter((i) => !istEinfach(lf.buchungen[i])));
+    let aufgaben;
+    if (art === "einfach") aufgaben = einfach.slice(0, 10);
+    else if (art === "zusammen") aufgaben = zusammen.slice(0, 10);
+    else if (art === "falsche") aufgaben = mischen(buchen.ergebnisse.filter((e) => !e.richtig).map((e) => e.i));
+    else aufgaben = mischen([...einfach.slice(0, 6), ...zusammen.slice(0, 4)]);
+    buchen = { nr: lf.nr, phase: "aufgabe", art, aufgaben, pos: 0, wahl: { soll: [""], haben: [""] }, pruefung: null, ergebnisse: [] };
+  }
+
+  function panelBuchen(lf, el) {
+    if (!lf.buchungen.length) {
+      el.innerHTML = leer("buchen", lf);
+      return;
+    }
+    if (!buchen || buchen.nr !== lf.nr) buchen = { nr: lf.nr, phase: "start" };
+    const s = standVon(lf.nr);
+
+    if (buchen.phase === "start") {
+      const einfach = lf.buchungen.filter(istEinfach).length;
+      const zusammen = lf.buchungen.length - einfach;
+      el.innerHTML = `<div class="block">
+        <h2>Buchungssätze üben</h2>
+        <p>Du bekommst einen Geschäftsfall und bildest den Buchungssatz: zuerst das Konto im <strong>Soll</strong>, dann <strong>an</strong> das Konto im <strong>Haben</strong>. Werden mehr als zwei Konten berührt, nimmst du mit „+ Konto“ weitere dazu.</p>
+        ${s.buchenBest != null ? `<p>Dein bestes Ergebnis bisher: <strong>${prozent(s.buchenBest)}</strong></p>` : ""}
+        <div class="knopfreihe">
+          ${einfach && zusammen ? '<button type="button" class="knopf primaer" data-aktion="buchen-start" data-art="gemischt">Gemischt · 10 Fälle</button>' : ""}
+          ${einfach ? `<button type="button" class="knopf${zusammen ? "" : " primaer"}" data-aktion="buchen-start" data-art="einfach">Einfache · ${Math.min(10, einfach)} Fälle</button>` : ""}
+          ${zusammen ? `<button type="button" class="knopf${einfach ? "" : " primaer"}" data-aktion="buchen-start" data-art="zusammen">Zusammengesetzte · ${Math.min(10, zusammen)} Fälle</button>` : ""}
+        </div>
+      </div>`;
+      return;
+    }
+
+    if (buchen.phase === "ende") {
+      el.innerHTML = buchenAuswertung(lf, s);
+      return;
+    }
+
+    const b = lf.buchungen[buchen.aufgaben[buchen.pos]];
+    const p = buchen.pruefung;
+    const konten = kontenListe(lf);
+    const loesung = { soll: b.soll.map((z) => z[0]), haben: b.haben.map((z) => z[0]) };
+    const anzahl = buchen.aufgaben.length;
+    const richtigBisher = buchen.ergebnisse.filter((e) => e.richtig).length;
+
+    const seite = (name) => {
+      const zeilen = buchen.wahl[name]
+        .map((wert, j) => {
+          let klasse = "konto-wahl";
+          if (p && wert) klasse += loesung[name].includes(wert) ? " richtig" : " falsch";
+          const label = `${name === "soll" ? "Konto im Soll" : "Konto im Haben"}${j ? ` ${j + 1}` : ""}`;
+          return `<div class="konto-zeile">
+            <select class="${klasse}" id="bs-${name}-${j}" data-seite="${name}" data-i="${j}" aria-label="${label}"${p ? " disabled" : ""}>
+              <option value="">Konto wählen …</option>
+              ${konten.map((k) => `<option value="${esc(k)}"${k === wert ? " selected" : ""}>${esc(k)}</option>`).join("")}
+            </select>
+            ${j > 0 && !p ? `<button type="button" class="konto-weg" data-aktion="buchen-minus" data-seite="${name}" data-i="${j}" aria-label="${label} entfernen">×</button>` : ""}
+          </div>`;
+        })
+        .join("");
+      const plus = p ? "" : `<button type="button" class="bs-plus" data-aktion="buchen-plus" data-seite="${name}">+ Konto</button>`;
+      return `<div class="bs-seite"><span class="bs-label">${name === "soll" ? "Soll" : "Haben"}</span>${zeilen}${plus}</div>`;
+    };
+
+    let unten;
+    if (!p) {
+      const bereit = buchen.wahl.soll.some(Boolean) && buchen.wahl.haben.some(Boolean);
+      unten = `<button type="button" class="knopf primaer" data-aktion="buchen-pruefen"${bereit ? "" : " disabled"}>Prüfen</button>`;
+    } else {
+      let titel = "Richtig!";
+      let text = "";
+      if (!p.richtig && p.vertauscht) {
+        titel = "Soll und Haben sind vertauscht.";
+        text = "Frag dich bei jedem Konto: Aktiv oder Passiv? Zugang oder Abgang?";
+      } else if (!p.richtig) {
+        titel = "Nicht ganz.";
+        text = `${p.sollOk ? "Das Soll stimmt." : "Das Soll stimmt nicht."} ${p.habenOk ? "Das Haben stimmt." : "Das Haben stimmt nicht."}`;
+      }
+      unten = `<div class="rueckmeldung ${p.richtig ? "gut" : "schlecht"}" role="status"><strong>${titel}</strong>${text ? `<p>${text}</p>` : ""}</div>
+        ${loesungHtml(b)}
+        ${herleitungHtml(lf, b, !p.richtig)}
+        <button type="button" class="knopf primaer" data-aktion="buchen-weiter">${buchen.pos === anzahl - 1 ? "Zur Auswertung" : "Nächster Geschäftsfall"}</button>`;
+    }
+
+    el.innerHTML = `<div class="leiste">
+        <span class="leiste-info">Geschäftsfall <strong>${buchen.pos + 1}</strong> von ${anzahl}</span>
+        <span class="leiste-info">${richtigBisher} richtig</span>
+      </div>
+      ${balken(buchen.pos / anzahl)}
+      <div class="block">
+        <p class="eyebrow">Geschäftsfall</p>
+        <p class="fall">${esc(b.fall)}</p>
+        <div class="buchungssatz">
+          ${seite("soll")}
+          <div class="bs-an" aria-hidden="true">an</div>
+          ${seite("haben")}
+        </div>
+        ${unten}
+      </div>`;
+  }
+
+  function loesungHtml(b) {
+    const zeilen = (liste) =>
+      liste.map(([konto, betrag]) => `<div class="bs-zeile"><span>${esc(konto)}</span><span class="betrag">${euro(betrag)}</span></div>`).join("");
+    return `<div class="loesung">
+      <p class="eyebrow">Lösung</p>
+      <div class="bs-loesung">
+        <div class="bs-block">${zeilen(b.soll)}</div>
+        <div class="bs-an">an</div>
+        <div class="bs-block">${zeilen(b.haben)}</div>
+      </div>
+      ${b.hinweis ? `<p class="hinweis">${esc(b.hinweis)}</p>` : ""}
+    </div>`;
+  }
+
+  function herleitungHtml(lf, b, offen) {
+    const zeile = (konto, seite) =>
+      `<tr><td>${esc(konto)}</td><td>${kontoArt(lf, konto).replace("konto", "")}</td><td>${zugangOderAbgang(lf, konto, seite)}</td><td>${seite}</td></tr>`;
+    return `<details class="herleitung"${offen ? " open" : ""}>
+      <summary>So kommst du drauf</summary>
+      <div class="inhalt"><div class="tabelle"><table>
+        <thead><tr><th>Konto</th><th>Aktiv/ Passiv</th><th>Zu-/ Abgang</th><th>Seite</th></tr></thead>
+        <tbody>${b.soll.map((z) => zeile(z[0], "Soll")).join("")}${b.haben.map((z) => zeile(z[0], "Haben")).join("")}</tbody>
+      </table></div></div>
+    </details>`;
+  }
+
+  function buchenAuswertung(lf, s) {
+    const anzahl = buchen.ergebnisse.length;
+    const richtig = buchen.ergebnisse.filter((e) => e.richtig).length;
+    const falsche = buchen.ergebnisse.filter((e) => !e.richtig).map((e) => lf.buchungen[e.i]);
+    let zusatz;
+    if (buchen.art === "falsche") zusatz = "Wiederholung der falschen Fälle, zählt nicht als Bestwert.";
+    else if (buchen.neuerBest) zusatz = "Neuer Bestwert!";
+    else zusatz = `Dein Bestwert: ${prozent(s.buchenBest)}`;
+    const liste = falsche
+      .map((b) => `<li><div>${esc(b.fall)}</div><div class="richtige-antwort">✓ ${esc(buchungssatzText(b))}</div></li>`)
+      .join("");
+    return `<div class="block">
+      <p class="eyebrow">Auswertung</p>
+      <p class="ergebnis-zahl">${richtig} <small>von ${anzahl} richtig</small></p>
+      <p>${prozent(anzahl ? richtig / anzahl : 0)} · ${zusatz}</p>
+      ${falsche.length ? `<h3>Diese Buchungssätze solltest du dir nochmal ansehen</h3><ol class="fehlerliste">${liste}</ol>` : "<p>Alles richtig gebucht. Stark!</p>"}
+      <div class="knopfreihe">
+        <button type="button" class="knopf primaer" data-aktion="buchen-neu">Neue Runde</button>
+        ${falsche.length ? '<button type="button" class="knopf" data-aktion="buchen-start" data-art="falsche">Nur die falschen wiederholen</button>' : ""}
+      </div>
+    </div>`;
+  }
+
+  function buchenKontoPlus(seite) {
+    if (!buchen || buchen.phase !== "aufgabe" || buchen.pruefung || buchen.wahl[seite].length >= 5) return;
+    buchen.wahl[seite].push("");
+    zeigePanel();
+    const neu = document.getElementById(`bs-${seite}-${buchen.wahl[seite].length - 1}`);
+    if (neu) neu.focus();
+  }
+
+  function buchenKontoWeg(seite, j) {
+    if (!buchen || buchen.pruefung || j < 1) return;
+    buchen.wahl[seite].splice(j, 1);
+    zeigePanel();
+  }
+
+  function buchenPruefen() {
+    if (!buchen || buchen.phase !== "aufgabe" || buchen.pruefung) return;
+    const i = buchen.aufgaben[buchen.pos];
+    const b = lernfeld(buchen.nr).buchungen[i];
+    const menge = (liste) => new Set(liste.filter(Boolean));
+    const gleich = (a, c) => a.size === c.size && [...a].every((x) => c.has(x));
+    const soll = menge(b.soll.map((z) => z[0]));
+    const haben = menge(b.haben.map((z) => z[0]));
+    const wahlSoll = menge(buchen.wahl.soll);
+    const wahlHaben = menge(buchen.wahl.haben);
+    if (!wahlSoll.size || !wahlHaben.size) return;
+    const sollOk = gleich(wahlSoll, soll);
+    const habenOk = gleich(wahlHaben, haben);
+    const vertauscht = !sollOk && !habenOk && gleich(wahlSoll, haben) && gleich(wahlHaben, soll);
+    buchen.pruefung = { sollOk, habenOk, vertauscht, richtig: sollOk && habenOk };
+    buchen.ergebnisse.push({ i, richtig: sollOk && habenOk });
+    zeigePanel();
+    const weiter = app.querySelector('[data-aktion="buchen-weiter"]');
+    const meldung = app.querySelector(".panel .rueckmeldung");
+    if (meldung) meldung.scrollIntoView({ block: "nearest" });
+    if (weiter) weiter.focus({ preventScroll: true });
+  }
+
+  function buchenWeiter() {
+    if (!buchen || !buchen.pruefung) return;
+    buchen.pos += 1;
+    buchen.pruefung = null;
+    buchen.wahl = { soll: [""], haben: [""] };
+    if (buchen.pos >= buchen.aufgaben.length) {
+      const lf = lernfeld(buchen.nr);
+      const s = standVon(lf.nr);
+      const anteil = buchen.ergebnisse.filter((e) => e.richtig).length / buchen.ergebnisse.length;
+      buchen.neuerBest = buchen.art !== "falsche" && (s.buchenBest == null || anteil > s.buchenBest);
+      if (buchen.neuerBest) s.buchenBest = anteil;
+      buchen.phase = "ende";
+      speichern();
+      zeigeFortschritt(lf);
+    }
+    zeigePanel();
+    panelNachOben();
+  }
+
   // ---------- Blitzrunde ----------
 
   // Spielfragen aus dem Quiz (nur mit einer richtigen Antwort) und aus den Karteikarten („Was passt?“).
@@ -854,6 +1186,19 @@
         fragen.push({ art: "Was passt?", frage: karte.vorne, optionen, richtig: optionen.indexOf(karte.hinten), erklaerung: "" });
       });
     }
+    const konten = kontenListe(lf);
+    lf.buchungen.filter(istEinfach).forEach((b) => {
+      const soll = b.soll[0][0];
+      const haben = b.haben[0][0];
+      const richtig = `${soll} an ${haben}`;
+      const falsch = new Set([`${haben} an ${soll}`]);
+      for (const k of mischen(konten)) {
+        if (falsch.size >= 3) break;
+        if (k !== soll && k !== haben) falsch.add(falsch.size % 2 ? `${soll} an ${k}` : `${k} an ${haben}`);
+      }
+      const optionen = mischen([richtig, ...falsch]);
+      fragen.push({ art: "Buchungssatz", frage: b.fall, optionen, richtig: optionen.indexOf(richtig), erklaerung: herleitungText(lf, b) });
+    });
     return fragen;
   }
 
@@ -1151,7 +1496,37 @@
       case "spiel-ende":
         spielBeenden();
         break;
+      case "buchen-start":
+        starteBuchen(lf, el.dataset.art);
+        zeigePanel();
+        panelNachOben();
+        break;
+      case "buchen-neu":
+        buchen = { nr: lf.nr, phase: "start" };
+        zeigePanel();
+        break;
+      case "buchen-plus":
+        buchenKontoPlus(el.dataset.seite);
+        break;
+      case "buchen-minus":
+        buchenKontoWeg(el.dataset.seite, Number(el.dataset.i));
+        break;
+      case "buchen-pruefen":
+        buchenPruefen();
+        break;
+      case "buchen-weiter":
+        buchenWeiter();
+        break;
     }
+  });
+
+  // Kontenauswahl im Buchungssatz-Trainer
+  app.addEventListener("change", (e) => {
+    const wahl = e.target.closest(".konto-wahl");
+    if (!wahl || !buchen || buchen.pruefung) return;
+    buchen.wahl[wahl.dataset.seite][Number(wahl.dataset.i)] = wahl.value;
+    const knopf = app.querySelector('[data-aktion="buchen-pruefen"]');
+    if (knopf) knopf.disabled = !(buchen.wahl.soll.some(Boolean) && buchen.wahl.haben.some(Boolean));
   });
 
   document.addEventListener("keydown", (e) => {
@@ -1161,15 +1536,16 @@
     // Pfeiltasten wechseln auf der Reiterleiste den Reiter; alle anderen Tasten gelten der Seite.
     const aufReiter = ziel.getAttribute && ziel.getAttribute("role") === "tab";
     if (aufReiter) {
-      const i = TABS.findIndex((t) => t.id === aktuell.tab);
+      const tabs = sichtbareTabs(lernfeld(aktuell.nr));
+      const i = tabs.findIndex((t) => t.id === aktuell.tab);
       let neu = -1;
-      if (e.key === "ArrowRight") neu = (i + 1) % TABS.length;
-      else if (e.key === "ArrowLeft") neu = (i - 1 + TABS.length) % TABS.length;
+      if (e.key === "ArrowRight") neu = (i + 1) % tabs.length;
+      else if (e.key === "ArrowLeft") neu = (i - 1 + tabs.length) % tabs.length;
       else if (e.key === "Home") neu = 0;
-      else if (e.key === "End") neu = TABS.length - 1;
+      else if (e.key === "End") neu = tabs.length - 1;
       if (neu >= 0) {
         e.preventDefault();
-        wechsleTab(TABS[neu].id, true);
+        wechsleTab(tabs[neu].id, true);
         return;
       }
     }
@@ -1186,6 +1562,15 @@
       } else if (e.key === "ArrowLeft" && deck.umgedreht) {
         e.preventDefault();
         bewerte(false);
+      }
+      return;
+    }
+
+    if (aktuell.tab === "buchen" && buchen && buchen.phase === "aufgabe") {
+      if (e.key === "Enter" && !aufKnopf) {
+        e.preventDefault();
+        if (buchen.pruefung) buchenWeiter();
+        else buchenPruefen();
       }
       return;
     }
@@ -1275,10 +1660,13 @@
   app.addEventListener("pointercancel", wischEnde);
 
   function route() {
-    const treffer = /^#lf(\d{1,2})(?:-(lernstoff|karten|quiz|spiel))?$/.exec(location.hash);
-    const nr = treffer ? Number(treffer[1]) : 0;
-    if (nr >= 1 && nr <= ANZAHL) zeigeLernfeld(nr, treffer[2]);
-    else zeigeStart(aktuell && aktuell.nr);
+    const tabs = "lernstoff|buchen|karten|quiz|spiel";
+    const lf = new RegExp(`^#lf(\\d{1,2})(?:-(${tabs}))?$`).exec(location.hash);
+    const nr = lf ? Number(lf[1]) : 0;
+    if (nr >= 1 && nr <= ANZAHL) return zeigeLernfeld(nr, lf[2]);
+    const t = new RegExp(`^#test-([a-z0-9]+)(?:-(${tabs}))?$`).exec(location.hash);
+    if (t && (P.tests || {})[t[1]]) return zeigeLernfeld(t[1], t[2]);
+    zeigeStart(aktuell && aktuell.nr);
   }
 
   window.addEventListener("hashchange", route);

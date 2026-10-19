@@ -12,6 +12,7 @@ const DATEIEN = [
   "assets/icons/icon-192.png",
   "daten/config.js",
   ...Array.from({ length: 15 }, (_, i) => `daten/lf${String(i + 1).padStart(2, "0")}.js`),
+  "daten/test-bestandskonten.js",
 ];
 
 self.addEventListener("install", (event) => {

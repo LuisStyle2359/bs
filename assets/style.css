@@ -701,7 +701,7 @@ img {
 
   .unten-leiste {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--spalten, 5), minmax(0, 1fr));
     gap: 2px;
     position: fixed;
     left: 0;
@@ -745,6 +745,15 @@ img {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.unten-leiste[data-spalten="6"] .unten-knopf {
+  font-size: 0.6875rem;
+}
+
+.unten-leiste[data-spalten="6"] .unten-knopf svg {
+  width: 22px;
+  height: 22px;
 }
 
 .unten-knopf[aria-current="page"] {
@@ -1315,6 +1324,10 @@ kbd {
   justify-self: start;
 }
 
+.block > * {
+  min-width: 0;
+}
+
 .block h2 {
   font-size: 1.625rem;
 }
@@ -1684,5 +1697,239 @@ kbd {
   .blitz-start {
     justify-self: stretch;
     min-height: 48px;
+  }
+}
+
+/* ---------- Tests auf der Startseite ---------- */
+
+.tests {
+  display: grid;
+  gap: 10px;
+}
+
+.test-karte {
+  display: grid;
+  gap: 6px;
+  padding: 16px 20px 18px;
+  border-radius: var(--radius);
+  background: var(--tinte);
+  color: var(--auf-tinte);
+  text-decoration: none;
+  box-shadow: 0 6px 18px var(--schatten);
+}
+
+.test-karte:active {
+  transform: scale(0.99);
+}
+
+.test-wann {
+  font-family: var(--schrift-titel);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.test-titel {
+  font-family: var(--schrift-titel);
+  font-weight: 700;
+  font-size: clamp(1.625rem, 5vw, 2.25rem);
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.test-karte .lf-meta {
+  color: inherit;
+  opacity: 0.85;
+}
+
+.test-karte .balken {
+  max-width: 16rem;
+  background: color-mix(in srgb, var(--auf-tinte) 25%, transparent);
+}
+
+.test-karte .balken > span {
+  background: var(--auf-tinte);
+}
+
+.test-karte.vorbei {
+  background: var(--flaeche);
+  color: var(--text);
+  border: 1px solid var(--linie);
+  box-shadow: none;
+}
+
+.test-karte.vorbei .balken {
+  background: var(--flaeche-2);
+}
+
+.test-karte.vorbei .balken > span {
+  background: var(--tinte);
+}
+
+/* ---------- Buchungssätze üben ---------- */
+
+.fall {
+  font-size: 1.1875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.buchungssatz {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.bs-seite {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bs-label {
+  font-family: var(--schrift-titel);
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.bs-an {
+  padding-top: 28px;
+  font-family: var(--schrift-titel);
+  font-weight: 700;
+  font-size: 1.375rem;
+  color: var(--tinte);
+}
+
+.konto-zeile {
+  display: flex;
+  gap: 6px;
+}
+
+.konto-wahl {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--flaeche);
+  color: var(--text);
+  font: inherit;
+}
+
+.konto-wahl.richtig {
+  border-color: var(--gruen);
+  background: var(--gruen-hell);
+}
+
+.konto-wahl.falsch {
+  border-color: var(--rot);
+  background: var(--rot-hell);
+}
+
+.konto-wahl:disabled {
+  opacity: 1;
+  color: var(--text);
+}
+
+.konto-weg {
+  flex: none;
+  width: 44px;
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  background: var(--flaeche);
+  color: var(--text-2);
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.bs-plus {
+  justify-self: start;
+  min-height: 36px;
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: var(--tinte);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.loesung {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px dashed var(--tinte);
+  border-radius: var(--radius);
+  background: var(--tinte-hell);
+}
+
+.bs-loesung {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: 4px 16px;
+}
+
+.bs-block {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bs-zeile {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 600;
+}
+
+.betrag {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.loesung .bs-an {
+  padding-top: 0;
+  font-size: 1.125rem;
+}
+
+.herleitung summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--tinte);
+}
+
+.herleitung[open] summary {
+  margin-bottom: 10px;
+}
+
+.herleitung table {
+  font-size: 0.9375rem;
+}
+
+.herleitung th,
+.herleitung td {
+  padding: 6px 8px;
+}
+
+@media (max-width: 600px) {
+  .buchungssatz,
+  .bs-loesung {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bs-an {
+    padding-top: 0;
+    text-align: center;
+  }
+
+  .loesung .bs-an {
+    text-align: left;
   }
 }
