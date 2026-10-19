@@ -1,6 +1,6 @@
 // Offline-Modus: Mit Internet wird immer die neueste Version geladen und zwischengespeichert,
 // ohne Internet kommt die zuletzt geladene Version aus dem Zwischenspeicher.
-const CACHE = "lernportal-v1";
+const CACHE = "lernportal-v2";
 
 const DATEIEN = [
   "./",

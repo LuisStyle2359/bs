@@ -1,6 +1,6 @@
 // Allgemeine Angaben zur Seite. Leere Felder werden einfach nicht angezeigt.
 window.LERNPORTAL = {
-  name: "Lernportal Berufsschule",
+  name: "Lernportal 10KU",
   beruf: "Kaufleute für Spedition und Logistikdienstleistung",
   klasse: "10KU",
   lernfelder: {},
