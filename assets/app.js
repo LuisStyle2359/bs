@@ -281,18 +281,29 @@
     </a></li>`;
   }
 
-  // Gruppiert die Kacheln nach Ausbildungsjahr; Lernfelder ohne Jahr landen am Ende.
+  // "1, 2, 3, 14" → "1–3, 14"
+  function nummernText(nummern) {
+    const teile = [];
+    for (let i = 0; i < nummern.length; i++) {
+      let j = i;
+      while (j + 1 < nummern.length && nummern[j + 1] === nummern[j] + 1) j++;
+      teile.push(j > i + 1 ? `${nummern[i]}–${nummern[j]}` : nummern.slice(i, j + 1).join(", "));
+      i = j;
+    }
+    return teile.join(", ");
+  }
+
+  // Gruppiert die Kacheln nach Lehrjahr, sobald welche eingetragen sind; ohne Jahr landen sie am Ende.
   function jahrgaenge(lfs) {
+    if (lfs.every((lf) => !lf.jahr)) return `<ol class="lf-raster">${lfs.map(kachel).join("")}</ol>`;
     const jahre = [...new Set(lfs.map((lf) => lf.jahr))].sort((a, b) => (a || 99) - (b || 99));
     return jahre
       .map((jahr) => {
         const gruppe = lfs.filter((lf) => lf.jahr === jahr);
-        const von = gruppe[0].nr;
-        const bis = gruppe[gruppe.length - 1].nr;
-        const titel = jahr ? `${jahr}. Ausbildungsjahr` : "Weitere Lernfelder";
+        const titel = jahr ? `LJ ${jahr}` : "Noch nicht eingeteilt";
         return `<section class="jahrgang" aria-labelledby="jahr-${jahr}">
-          <h2 class="jahr-titel" id="jahr-${jahr}">${titel}<small>LF ${von === bis ? von : `${von}–${bis}`}</small></h2>
-          <ol class="lf-raster" start="${von}">${gruppe.map(kachel).join("")}</ol>
+          <h2 class="jahr-titel" id="jahr-${jahr}">${titel}<small>LF ${nummernText(gruppe.map((lf) => lf.nr))}</small></h2>
+          <ol class="lf-raster">${gruppe.map(kachel).join("")}</ol>
         </section>`;
       })
       .join("");
@@ -387,7 +398,7 @@
         <main class="lf-seite">
           <a class="zurueck" href="#start">← Alle Lernfelder</a>
           <header class="lf-kopf">
-            <p class="eyebrow">LF ${nr} von ${ANZAHL}${lf.jahr ? ` · ${lf.jahr}. Ausbildungsjahr` : ""}</p>
+            <p class="eyebrow">LF ${nr} von ${ANZAHL}${lf.jahr ? ` · LJ ${lf.jahr}` : ""}</p>
             <h1>${esc(titelVon(lf))}</h1>
             ${lf.beschreibung ? `<p class="lead">${esc(lf.beschreibung)}</p>` : ""}
             <div class="lf-fortschritt" id="lf-fortschritt"></div>

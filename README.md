@@ -1,6 +1,6 @@
 # Lernportal Berufsschule
 
-Eine Lernseite für die Klasse 10KU, Kaufleute für Spedition und Logistikdienstleistung: 15 Lernfelder, nach Ausbildungsjahr sortiert und jedes einzeln anklickbar. Zu jedem Lernfeld gibt es drei Bereiche:
+Eine Lernseite für die Klasse 10KU, Kaufleute für Spedition und Logistikdienstleistung: 15 Lernfelder, jedes einzeln anklickbar. Zu jedem Lernfeld gibt es drei Bereiche:
 
 - **Lernstoff**: Kapitel zum Nachlesen, jedes Kapitel lässt sich als gelesen abhaken
 - **Karteikarten**: Frage lesen, Karte umdrehen, dann „Gewusst“ oder „Nochmal“
@@ -41,12 +41,12 @@ daten/lf15.js       Inhalt Lernfeld 15
 
 ## Inhalt eintragen
 
-Jedes Lernfeld hat eine eigene Datei in `daten/`. Die Titel und Ausbildungsjahre der 15 Lernfelder stehen schon drin (nach dem KMK-Rahmenlehrplan vom 30.04.2004). So sieht ein gefülltes Lernfeld aus (gekürztes Beispiel):
+Jedes Lernfeld hat eine eigene Datei in `daten/`. Die Titel der 15 Lernfelder stehen schon drin (nach dem KMK-Rahmenlehrplan vom 30.04.2004). So sieht ein gefülltes Lernfeld aus (gekürztes Beispiel):
 
 ```js
 lernfeld(4, {
   titel: "Verkehrsträger vergleichen und Frachtaufträge im Güterkraftverkehr bearbeiten",
-  jahr: 1,
+  jahr: 1, // Lehrjahr an eurer Schule
   beschreibung: "Frachtvertrag, Frachtbrief und Haftung im Straßengüterverkehr.",
 
   kapitel: [
@@ -93,5 +93,5 @@ Hinweise:
 - Texte in `text`, `vorne`, `hinten`, `frage` und `erklaerung` sind [Markdown](https://www.markdownguide.org/basic-syntax/): `**fett**`, Listen mit `-`, Tabellen, Zitate mit `>` (werden als Merke-Kasten angezeigt).
 - Bilder in einen Ordner wie `bilder/lf03/` legen und im Text mit `![Beschreibung](bilder/lf03/bohrer.png)` einbinden.
 - Der Fortschritt hängt am Kapiteltitel bzw. an der Vorderseite einer Karteikarte. Wenn du diese Texte änderst, gilt die Karte oder das Kapitel wieder als neu.
-- `jahr` legt fest, unter welchem Ausbildungsjahr das Lernfeld auf der Startseite steht.
+- `jahr` ist das Lehrjahr (LJ), in dem ihr das Lernfeld an eurer Schule habt. Sobald es bei einem Lernfeld eingetragen ist, sortiert die Startseite nach LJ. Bei `0` stehen die Lernfelder einfach der Reihe nach.
 - Name, Beruf und Klasse stehen in `daten/config.js`.
