@@ -273,6 +273,35 @@ img {
   color: var(--text);
 }
 
+.jahrgang {
+  display: grid;
+  gap: 12px;
+}
+
+.jahr-titel {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.jahr-titel small {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.jahr-titel::after {
+  content: "";
+  flex: 1;
+  align-self: center;
+  height: 1px;
+  background: var(--linie);
+}
+
 .lf-raster {
   list-style: none;
   margin: 0;

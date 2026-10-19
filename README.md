@@ -1,6 +1,6 @@
 # Lernportal Berufsschule
 
-Eine Lernseite für die Klasse: 15 Lernfelder, jedes einzeln anklickbar. Zu jedem Lernfeld gibt es drei Bereiche:
+Eine Lernseite für die Klasse 10KU, Kaufleute für Spedition und Logistikdienstleistung: 15 Lernfelder, nach Ausbildungsjahr sortiert und jedes einzeln anklickbar. Zu jedem Lernfeld gibt es drei Bereiche:
 
 - **Lernstoff**: Kapitel zum Nachlesen, jedes Kapitel lässt sich als gelesen abhaken
 - **Karteikarten**: Frage lesen, Karte umdrehen, dann „Gewusst“ oder „Nochmal“
@@ -28,46 +28,48 @@ daten/lf15.js       Inhalt Lernfeld 15
 
 ## Inhalt eintragen
 
-Jedes Lernfeld hat eine eigene Datei in `daten/`. So sieht ein gefülltes Lernfeld aus:
+Jedes Lernfeld hat eine eigene Datei in `daten/`. Die Titel und Ausbildungsjahre der 15 Lernfelder stehen schon drin (nach dem KMK-Rahmenlehrplan vom 30.04.2004). So sieht ein gefülltes Lernfeld aus (gekürztes Beispiel):
 
 ```js
-lernfeld(3, {
-  titel: "Werkstücke mit Maschinen fertigen",
-  beschreibung: "Bohren, Senken, Reiben und Gewindeschneiden.",
+lernfeld(4, {
+  titel: "Verkehrsträger vergleichen und Frachtaufträge im Güterkraftverkehr bearbeiten",
+  jahr: 1,
+  beschreibung: "Frachtvertrag, Frachtbrief und Haftung im Straßengüterverkehr.",
 
   kapitel: [
     {
-      titel: "Bohren",
+      titel: "Haftung des Frachtführers",
       text: `
-        Beim Bohren entsteht durch eine **drehende Schnittbewegung** ein zylindrisches Loch.
+        Der Frachtführer haftet für **Verlust und Beschädigung** des Gutes von der Übernahme bis zur Ablieferung (§ 425 HGB).
 
-        - Spiralbohrer Typ N: für Stahl
-        - Spiralbohrer Typ H: für harte, spröde Werkstoffe
+        - national: Handelsgesetzbuch (HGB)
+        - grenzüberschreitend: CMR
 
-        > **Merke:** Je größer der Durchmesser, desto kleiner die Drehzahl.
+        > **Merke:** Die Regelhaftung ist auf 8,33 Sonderziehungsrechte (SZR) je kg Rohgewicht begrenzt.
 
-        | Werkstoff | Schnittgeschwindigkeit |
+        | Rechtsgrundlage | Haftungshöchstbetrag |
         |---|---|
-        | Baustahl | 25–35 m/min |
+        | HGB (§ 431) | 8,33 SZR/kg |
+        | CMR (Art. 23) | 8,33 SZR/kg |
       `,
     },
   ],
 
   karteikarten: [
-    { vorne: "Wofür steht Typ N beim Spiralbohrer?", hinten: "Normal: für Stahl und Stahlguss." },
+    { vorne: "Wofür gilt die CMR?", hinten: "Für den grenzüberschreitenden Güterkraftverkehr." },
   ],
 
   quiz: [
     {
-      frage: "Wie verändert sich die Drehzahl, wenn der Bohrerdurchmesser größer wird?",
-      antworten: ["Sie steigt", "Sie sinkt", "Sie bleibt gleich"],
+      frage: "Bis zu welchem Betrag haftet der Frachtführer nach HGB regulär je kg Rohgewicht?",
+      antworten: ["2 SZR", "8,33 SZR", "22 SZR"],
       richtig: 1, // Zählung beginnt bei 0: 0 = erste Antwort
-      erklaerung: "n = v / (π · d): Ein größeres d ergibt ein kleineres n.",
+      erklaerung: "§ 431 HGB begrenzt die Haftung auf 8,33 SZR je kg.",
     },
     {
-      frage: "Welche Werkzeuge sind Bohrwerkzeuge?",
-      antworten: ["Spiralbohrer", "Feile", "Stufenbohrer"],
-      richtig: [0, 2], // mehrere richtige Antworten als Liste
+      frage: "Welche davon sind Verkehrsträger?",
+      antworten: ["Straße", "Lager", "Schiene", "Luft"],
+      richtig: [0, 2, 3], // mehrere richtige Antworten als Liste
     },
   ],
 });
@@ -78,4 +80,5 @@ Hinweise:
 - Texte in `text`, `vorne`, `hinten`, `frage` und `erklaerung` sind [Markdown](https://www.markdownguide.org/basic-syntax/): `**fett**`, Listen mit `-`, Tabellen, Zitate mit `>` (werden als Merke-Kasten angezeigt).
 - Bilder in einen Ordner wie `bilder/lf03/` legen und im Text mit `![Beschreibung](bilder/lf03/bohrer.png)` einbinden.
 - Der Fortschritt hängt am Kapiteltitel bzw. an der Vorderseite einer Karteikarte. Wenn du diese Texte änderst, gilt die Karte oder das Kapitel wieder als neu.
+- `jahr` legt fest, unter welchem Ausbildungsjahr das Lernfeld auf der Startseite steht.
 - Name, Beruf und Klasse stehen in `daten/config.js`.

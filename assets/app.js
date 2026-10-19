@@ -116,6 +116,7 @@
     return {
       nr,
       titel: String(d.titel || "").trim(),
+      jahr: Number(d.jahr) || 0,
       beschreibung: String(d.beschreibung || "").trim(),
       kapitel: d.kapitel || [],
       karteikarten: d.karteikarten || [],
@@ -246,6 +247,23 @@
     </a></li>`;
   }
 
+  // Gruppiert die Kacheln nach Ausbildungsjahr; Lernfelder ohne Jahr landen am Ende.
+  function jahrgaenge(lfs) {
+    const jahre = [...new Set(lfs.map((lf) => lf.jahr))].sort((a, b) => (a || 99) - (b || 99));
+    return jahre
+      .map((jahr) => {
+        const gruppe = lfs.filter((lf) => lf.jahr === jahr);
+        const von = gruppe[0].nr;
+        const bis = gruppe[gruppe.length - 1].nr;
+        const titel = jahr ? `${jahr}. Ausbildungsjahr` : "Weitere Lernfelder";
+        return `<section class="jahrgang" aria-labelledby="jahr-${jahr}">
+          <h2 class="jahr-titel" id="jahr-${jahr}">${titel}<small>LF ${von === bis ? von : `${von}–${bis}`}</small></h2>
+          <ol class="lf-raster" start="${von}">${gruppe.map(kachel).join("")}</ol>
+        </section>`;
+      })
+      .join("");
+  }
+
   function zeigeStart(vonNr) {
     aktuell = null;
     deck = null;
@@ -271,7 +289,7 @@
           <p class="lead">Such dir ein Lernfeld aus. Zu jedem gibt es Lernstoff zum Nachlesen, Karteikarten zum Abfragen und ein Quiz zum Testen.</p>
           <p class="stand">${standText}</p>
         </section>
-        <ol class="lf-raster">${lfs.map(kachel).join("")}</ol>
+        ${jahrgaenge(lfs)}
       </main>
       ${fusszeile()}
     </div>`;
@@ -312,7 +330,7 @@
         <main class="lf-seite">
           <a class="zurueck" href="#start">← Alle Lernfelder</a>
           <header class="lf-kopf">
-            <p class="eyebrow">LF ${nr} von ${ANZAHL}</p>
+            <p class="eyebrow">LF ${nr} von ${ANZAHL}${lf.jahr ? ` · ${lf.jahr}. Ausbildungsjahr` : ""}</p>
             <h1>${esc(titelVon(lf))}</h1>
             ${lf.beschreibung ? `<p class="lead">${esc(lf.beschreibung)}</p>` : ""}
             <div class="lf-fortschritt" id="lf-fortschritt"></div>
@@ -378,7 +396,7 @@
     const texte = {
       lernstoff: [
         "Noch kein Lernstoff",
-        `Für ${esc(titelVon(lf))} ist noch kein Lernstoff da. Sobald er eingetragen ist, findest du ihn hier in Kapiteln zum Nachlesen.`,
+        `Für Lernfeld ${lf.nr} ist noch kein Lernstoff da. Sobald er eingetragen ist, findest du ihn hier in Kapiteln zum Nachlesen.`,
       ],
       karten: [
         "Noch keine Karteikarten",

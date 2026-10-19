@@ -1,8 +1,8 @@
 // Allgemeine Angaben zur Seite. Leere Felder werden einfach nicht angezeigt.
 window.LERNPORTAL = {
   name: "Lernportal Berufsschule",
-  beruf: "", // z. B. "Industriemechaniker/-in"
-  klasse: "", // z. B. "IM 24b"
+  beruf: "Kaufleute für Spedition und Logistikdienstleistung",
+  klasse: "10KU",
   lernfelder: {},
 };
 
