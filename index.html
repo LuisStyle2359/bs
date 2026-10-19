@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Lernportal Berufsschule</title>
+    <meta name="description" content="Gemeinsam für die Berufsschule lernen: 15 Lernfelder mit Lernstoff, Karteikarten und Quiz." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap"
+    />
+    <link rel="stylesheet" href="assets/style.css" />
+    <script>
+      try {
+        var t = localStorage.getItem("lernportal:theme");
+        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <noscript><p class="noscript">Bitte JavaScript aktivieren, um das Lernportal zu nutzen.</p></noscript>
+
+    <script src="assets/vendor/marked.min.js"></script>
+    <script src="daten/config.js"></script>
+    <script src="daten/lf01.js"></script>
+    <script src="daten/lf02.js"></script>
+    <script src="daten/lf03.js"></script>
+    <script src="daten/lf04.js"></script>
+    <script src="daten/lf05.js"></script>
+    <script src="daten/lf06.js"></script>
+    <script src="daten/lf07.js"></script>
+    <script src="daten/lf08.js"></script>
+    <script src="daten/lf09.js"></script>
+    <script src="daten/lf10.js"></script>
+    <script src="daten/lf11.js"></script>
+    <script src="daten/lf12.js"></script>
+    <script src="daten/lf13.js"></script>
+    <script src="daten/lf14.js"></script>
+    <script src="daten/lf15.js"></script>
+    <script src="assets/app.js"></script>
+  </body>
+</html>
