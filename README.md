@@ -1,5 +1,7 @@
 # Lernportal Berufsschule
 
+**Zur Seite: https://lernportal-10ku.vercel.app/**
+
 Eine Lernseite für die Klasse 10KU, Kaufleute für Spedition und Logistikdienstleistung: 15 Lernfelder, jedes einzeln anklickbar. Zu jedem Lernfeld gibt es drei Bereiche:
 
 - **Lernstoff**: Kapitel zum Nachlesen, jedes Kapitel lässt sich als gelesen abhaken
@@ -17,12 +19,12 @@ Die Seite ist fürs Handy gebaut:
 - Karteikarten: antippen zum Umdrehen, dann nach rechts wischen = gewusst, nach links = nochmal.
 - Auf der Startseite führt „Weiterlernen“ direkt zum zuletzt geöffneten Lernfeld.
 - **Als App speichern:** Auf dem iPhone/iPad in Safari auf *Teilen → Zum Home-Bildschirm*, auf Android im Chrome-Menü *Zum Startbildschirm hinzufügen*. Dann öffnet sich die Seite wie eine App ohne Browserleiste.
-- **Offline:** Nach dem ersten Öffnen über GitHub Pages funktioniert die Seite auch ohne Internet, mit dem Stand vom letzten Laden.
+- **Offline:** Nach dem ersten Öffnen über den Link funktioniert die Seite auch ohne Internet, mit dem Stand vom letzten Laden.
 
 ## Seite öffnen
 
 - **Lokal:** `index.html` doppelklicken. Es wird nichts installiert und nichts gebaut.
-- **Online für die Klasse (GitHub Pages):** Im Repository auf GitHub unter *Settings → Pages* bei *Build and deployment* die Quelle *Deploy from a branch* wählen, den Branch mit der Seite und den Ordner `/ (root)` auswählen und speichern. Nach ein bis zwei Minuten ist die Seite unter `https://<benutzername>.github.io/bs/` erreichbar. Diesen Link kannst du an die Klasse schicken.
+- **Online für die Klasse:** Die Seite läuft auf Vercel unter https://lernportal-10ku.vercel.app/. Vercel ist mit diesem Repository verbunden: Jeder Push auf den Standard-Branch geht nach etwa einer Minute automatisch online. Es muss nichts gebaut werden (Vercel-Einstellung „Other“, Root Directory `./`).
 
 ## Aufbau
 
