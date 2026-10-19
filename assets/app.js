@@ -29,7 +29,15 @@
       feld: "quiz",
       icon: `${SVG}<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>`,
     },
+    {
+      id: "spiel",
+      name: "Blitzrunde",
+      kurz: "Blitzrunde",
+      feld: null, // Fragen kommen aus Karteikarten und Quiz
+      icon: `${SVG}<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>`,
+    },
   ];
+  const ICON_BLITZ = TABS[3].icon;
   const ICON_UEBERSICHT = `${SVG}<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`;
   const BUCHSTABEN = "ABCDEFGHIJ";
 
@@ -42,6 +50,8 @@
   let aktuell = null; // { nr, tab } auf einer Lernfeld-Seite, sonst null
   let deck = null; // laufender Karteikarten-Stapel
   let quiz = null; // laufendes Quiz
+  let spiel = null; // laufende Blitzrunde
+  let spielTimer = null;
   let loeschTimer = null;
   let wisch = null; // laufende Wischgeste auf einer Karteikarte
   let klickSperreBis = 0; // verhindert, dass nach dem Wischen die Karte umgedreht wird
@@ -263,6 +273,7 @@
     aktuell = null;
     deck = null;
     quiz = null;
+    spiel = null;
     route();
     const hinweis = document.querySelector(".fusszeile p");
     if (hinweis) hinweis.textContent = "Dein Fortschritt wurde gelöscht.";
@@ -323,7 +334,7 @@
     const z = zuletztGelernt();
     const lf = z && lernfeld(z.nr);
     if (!lf || !hatInhalt(lf)) return "";
-    const tab = TABS.find((t) => t.id === z.tab && lf[t.feld].length) || TABS.find((t) => lf[t.feld].length);
+    const tab = TABS.find((t) => t.id === z.tab && tabHatInhalt(lf, t)) || TABS.find((t) => tabHatInhalt(lf, t));
     return `<a class="weiterlernen" href="#lf${lf.nr}-${tab.id}">
       <span class="eyebrow">Weiterlernen</span>
       <span class="wl-titel">LF ${lf.nr} · ${esc(titelVon(lf))}</span>
@@ -335,6 +346,7 @@
     aktuell = null;
     deck = null;
     quiz = null;
+    spiel = null;
     document.title = P.name;
 
     const lfs = alleLernfelder();
@@ -353,7 +365,7 @@
         <section class="intro">
           <p class="eyebrow">${esc(unterzeile)}</p>
           <h1>Lernfelder</h1>
-          <p class="lead">Such dir ein Lernfeld aus. Zu jedem gibt es Lernstoff zum Nachlesen, Karteikarten zum Abfragen und ein Quiz zum Testen.</p>
+          <p class="lead">Such dir ein Lernfeld aus. Zu jedem gibt es Lernstoff zum Nachlesen, Karteikarten, ein Quiz und die Blitzrunde als schnelles Spiel.</p>
           <p class="stand">${standText}</p>
           ${weiterlernen()}
         </section>
@@ -373,8 +385,12 @@
 
   // ---------- Lernfeld-Seite ----------
 
+  function tabHatInhalt(lf, t) {
+    return t.feld ? lf[t.feld].length > 0 : hatSpiel(lf);
+  }
+
   function standardTab(lf) {
-    const mitInhalt = TABS.find((t) => lf[t.feld].length);
+    const mitInhalt = TABS.find((t) => tabHatInhalt(lf, t));
     return mitInhalt ? mitInhalt.id : "lernstoff";
   }
 
@@ -393,6 +409,7 @@
     if (neu) {
       deck = null;
       quiz = null;
+      spiel = null;
       app.innerHTML = `<div class="seite mit-leiste">
         ${kopfzeile()}
         <main class="lf-seite">
@@ -402,11 +419,12 @@
             <h1>${esc(titelVon(lf))}</h1>
             ${lf.beschreibung ? `<p class="lead">${esc(lf.beschreibung)}</p>` : ""}
             <div class="lf-fortschritt" id="lf-fortschritt"></div>
+            ${hatSpiel(lf) ? `<button type="button" class="knopf blitz-start" data-tab="spiel">${ICON_BLITZ}<span>Blitzrunde spielen</span></button>` : ""}
           </header>
           <div class="tabs" role="tablist" aria-label="Lernbereiche">
             ${TABS.map(
               (t) =>
-                `<button type="button" role="tab" id="tab-${t.id}" aria-controls="panel" data-tab="${t.id}">${t.name}<span class="anzahl">${lf[t.feld].length}</span></button>`,
+                `<button type="button" role="tab" id="tab-${t.id}" aria-controls="panel" data-tab="${t.id}">${t.name}${t.feld ? `<span class="anzahl">${lf[t.feld].length}</span>` : ""}</button>`,
             ).join("")}
           </div>
           <section class="panel" id="panel" role="tabpanel"></section>
@@ -473,8 +491,10 @@
     if (!panel || !aktuell) return;
     const lf = lernfeld(aktuell.nr);
     panel.setAttribute("aria-labelledby", `tab-${aktuell.tab}`);
+    app.querySelector(".seite").classList.remove("fokus");
     if (aktuell.tab === "karten") panelKarten(lf, panel, opt || {});
     else if (aktuell.tab === "quiz") panelQuiz(lf, panel);
+    else if (aktuell.tab === "spiel") panelSpiel(lf, panel);
     else panelLernstoff(lf, panel);
   }
 
@@ -487,6 +507,10 @@
       karten: [
         "Noch keine Karteikarten",
         "Hier fragst du dich später selbst ab: Frage lesen, Karte umdrehen, ehrlich sagen, ob du es wusstest.",
+      ],
+      spiel: [
+        "Noch keine Blitzrunde",
+        "Die Blitzrunde mischt schnelle Fragen aus den Karteikarten und dem Quiz dieses Lernfelds. Sobald dort etwas eingetragen ist, kannst du hier spielen.",
       ],
       quiz: [
         "Noch kein Quiz",
@@ -810,12 +834,241 @@
     if (oben < 0 || oben > window.innerHeight * 0.25) panel.scrollIntoView({ block: "start" });
   }
 
+  // ---------- Blitzrunde ----------
+
+  // Spielfragen aus dem Quiz (nur mit einer richtigen Antwort) und aus den Karteikarten („Was passt?“).
+  function spielFragen(lf) {
+    const fragen = [];
+    lf.quiz.forEach((q) => {
+      if (!Array.isArray(q.richtig) && (q.antworten || []).length >= 2) {
+        fragen.push({ art: "Quiz", frage: q.frage, optionen: q.antworten, richtig: q.richtig, erklaerung: q.erklaerung || "" });
+      }
+    });
+    const karten = lf.karteikarten;
+    if (karten.length >= 2) {
+      karten.forEach((karte) => {
+        const andere = mischen(karten.filter((k) => k.hinten !== karte.hinten))
+          .slice(0, 3)
+          .map((k) => k.hinten);
+        const optionen = mischen([karte.hinten, ...andere]);
+        fragen.push({ art: "Was passt?", frage: karte.vorne, optionen, richtig: optionen.indexOf(karte.hinten), erklaerung: "" });
+      });
+    }
+    return fragen;
+  }
+
+  function hatSpiel(lf) {
+    return spielFragen(lf).length >= 2;
+  }
+
+  // Mehrzeilige Kartenrückseiten als eine Zeile, damit sie in einen Antwortknopf passen.
+  function einzeilig(text) {
+    return String(text ?? "")
+      .split("\n")
+      .map((z) => z.replace(/^\s*[-*]\s+/, "").trim())
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  function antwortText(frage, j) {
+    return mdZeile(frage.art === "Quiz" ? frage.optionen[j] : einzeilig(frage.optionen[j]));
+  }
+
+  function zahl(n) {
+    return Number(n || 0).toLocaleString("de-DE");
+  }
+
+  function starteSpiel(lf, anzahl) {
+    clearTimeout(spielTimer);
+    spiel = {
+      nr: lf.nr,
+      phase: "frage",
+      fragen: mischen(spielFragen(lf)).slice(0, anzahl),
+      pos: 0,
+      gewaehlt: null,
+      ergebnisse: [],
+      punkte: 0,
+      plus: null,
+      serie: 0,
+      besteSerie: 0,
+      fehler: [],
+      seit: Date.now(),
+    };
+  }
+
+  function panelSpiel(lf, el) {
+    if (!hatSpiel(lf)) {
+      el.innerHTML = leer("spiel", lf);
+      return;
+    }
+    if (!spiel || spiel.nr !== lf.nr) spiel = { nr: lf.nr, phase: "start" };
+    const s = standVon(lf.nr);
+
+    if (spiel.phase === "start") {
+      const vorrat = spielFragen(lf).length;
+      const runden = vorrat <= 5 ? [vorrat] : [5, Math.min(10, vorrat)];
+      el.innerHTML = `<div class="block spiel-start">
+        <h2>Blitzrunde</h2>
+        <p>Schnelle Fragen aus diesem Lernfeld, bunt gemischt. Richtig gibt Punkte, schnell antworten gibt Bonus, mehrere richtig am Stück geben eine Serie.</p>
+        <p class="hinweis">Während der Runde siehst du nur die Frage, alles andere ist ausgeblendet.</p>
+        ${s.spielBest ? `<p>Dein Rekord: <strong>${zahl(s.spielBest)} Punkte</strong></p>` : ""}
+        <div class="knopfreihe">
+          ${runden
+            .map(
+              (n, i) =>
+                `<button type="button" class="knopf${i === 0 ? " primaer" : ""}" data-aktion="spiel-start" data-anzahl="${n}">${n} Fragen · ca. ${Math.max(1, Math.round(n / 5))} Min.</button>`,
+            )
+            .join("")}
+        </div>
+      </div>`;
+      return;
+    }
+
+    app.querySelector(".seite").classList.add("fokus");
+    const anzahl = spiel.fragen.length;
+
+    if (spiel.phase === "ende") {
+      const richtig = spiel.ergebnisse.filter(Boolean).length;
+      let rekord = "";
+      if (spiel.neuerRekord) rekord = " · <strong>Neuer Rekord!</strong>";
+      else if (s.spielBest) rekord = ` · Rekord: ${zahl(s.spielBest)}`;
+      const fehler = spiel.fehler
+        .map((f) => `<li><div class="inhalt">${md(f.frage)}</div><div class="richtige-antwort">✓ ${antwortText(f, f.richtig)}</div></li>`)
+        .join("");
+      el.innerHTML = `<div class="block">
+        <p class="eyebrow">Blitzrunde geschafft</p>
+        <p class="ergebnis-zahl">${zahl(spiel.punkte)} <small>Punkte</small></p>
+        <p>${richtig} von ${anzahl} richtig · beste Serie: ${spiel.besteSerie}${rekord}</p>
+        ${fehler ? `<h3>Das schaust du dir am besten nochmal an</h3><ol class="fehlerliste">${fehler}</ol>` : "<p>Alles richtig. Stark!</p>"}
+        <div class="knopfreihe">
+          <button type="button" class="knopf primaer" data-aktion="spiel-start" data-anzahl="${anzahl}">Nochmal spielen</button>
+          <button type="button" class="knopf" data-aktion="spiel-ende">Fertig</button>
+        </div>
+      </div>`;
+      return;
+    }
+
+    const frage = spiel.fragen[spiel.pos];
+    const beantwortet = spiel.gewaehlt !== null;
+    const getroffen = beantwortet && spiel.gewaehlt === frage.richtig;
+    const optionen = frage.optionen
+      .map((_, j) => {
+        let klasse = "option";
+        if (beantwortet && j === frage.richtig) klasse += " richtig";
+        else if (beantwortet && j === spiel.gewaehlt) klasse += " falsch";
+        return `<li><button type="button" class="${klasse}" data-aktion="spiel-wahl" data-j="${j}"${beantwortet ? " disabled" : ""}>
+          <span class="option-buchstabe">${BUCHSTABEN[j]}</span><span class="option-text">${antwortText(frage, j)}</span>
+        </button></li>`;
+      })
+      .join("");
+
+    let unten = "";
+    if (getroffen) {
+      const extra = [];
+      if (spiel.plus.tempo) extra.push(`schnell +${spiel.plus.tempo}`);
+      if (spiel.plus.serie) extra.push(`Serie +${spiel.plus.serie}`);
+      unten = `<div class="spiel-plus" role="status"><strong>Richtig! +${spiel.plus.gesamt}</strong>${extra.length ? `<span>${extra.join(" · ")}</span>` : ""}</div>`;
+    } else if (beantwortet) {
+      unten = `<div class="rueckmeldung schlecht" role="status">
+          <strong>Nicht ganz.</strong>
+          ${frage.erklaerung ? `<div class="inhalt">${md(frage.erklaerung)}</div>` : "<p>Die richtige Antwort ist grün markiert.</p>"}
+        </div>
+        <button type="button" class="knopf primaer" data-aktion="spiel-weiter">${spiel.pos === anzahl - 1 ? "Zum Ergebnis" : "Weiter"}</button>`;
+    }
+
+    const schritte = spiel.fragen
+      .map((_, i) => {
+        if (i < spiel.ergebnisse.length) return `<li class="${spiel.ergebnisse[i] ? "gut" : "schlecht"}"></li>`;
+        return `<li class="${i === spiel.pos ? "jetzt" : ""}"></li>`;
+      })
+      .join("");
+
+    el.innerHTML = `<div class="spiel-kopf">
+        <button type="button" class="knopf klein" data-aktion="spiel-ende">Beenden</button>
+        <div class="spiel-werte">
+          <span class="spiel-wert"><small>Punkte</small><strong>${zahl(spiel.punkte)}</strong></span>
+          <span class="spiel-wert${spiel.serie >= 3 ? " heiss" : ""}"><small>Serie</small><strong>${spiel.serie}</strong></span>
+        </div>
+      </div>
+      <ol class="spiel-schritte" aria-label="Frage ${spiel.pos + 1} von ${anzahl}">${schritte}</ol>
+      <div class="block${beantwortet && !getroffen ? " wackelt" : ""}">
+        <p class="eyebrow">${frage.art} · ${spiel.pos + 1} von ${anzahl}</p>
+        <div class="spiel-frage inhalt">${md(frage.frage)}</div>
+        <ul class="optionen">${optionen}</ul>
+        ${unten}
+      </div>`;
+  }
+
+  function spielWahl(j) {
+    if (!spiel || spiel.phase !== "frage" || spiel.gewaehlt !== null) return;
+    const frage = spiel.fragen[spiel.pos];
+    if (j < 0 || j >= frage.optionen.length) return;
+    spiel.gewaehlt = j;
+    const getroffen = j === frage.richtig;
+    spiel.ergebnisse.push(getroffen);
+    if (getroffen) {
+      const sekunden = (Date.now() - spiel.seit) / 1000;
+      const tempo = sekunden <= 6 ? 50 : sekunden <= 12 ? 20 : 0;
+      spiel.serie += 1;
+      spiel.besteSerie = Math.max(spiel.besteSerie, spiel.serie);
+      const serie = Math.min(spiel.serie - 1, 5) * 20;
+      spiel.plus = { gesamt: 100 + tempo + serie, tempo, serie };
+      spiel.punkte += spiel.plus.gesamt;
+    } else {
+      spiel.serie = 0;
+      spiel.fehler.push(frage);
+    }
+    zeigePanel();
+    if (getroffen) {
+      // Richtige Antworten gehen von allein weiter, damit der Fluss nicht abreißt.
+      const pos = spiel.pos;
+      clearTimeout(spielTimer);
+      spielTimer = setTimeout(() => {
+        if (spiel && spiel.phase === "frage" && spiel.pos === pos && aktuell && aktuell.tab === "spiel") spielWeiter();
+      }, 1100);
+    } else {
+      const weiter = app.querySelector('[data-aktion="spiel-weiter"]');
+      if (weiter) {
+        weiter.focus({ preventScroll: true });
+        weiter.scrollIntoView({ block: "nearest" });
+      }
+    }
+  }
+
+  function spielWeiter() {
+    if (!spiel || spiel.phase !== "frage" || spiel.gewaehlt === null) return;
+    clearTimeout(spielTimer);
+    spiel.pos += 1;
+    spiel.gewaehlt = null;
+    spiel.plus = null;
+    spiel.seit = Date.now();
+    if (spiel.pos >= spiel.fragen.length) {
+      const s = standVon(spiel.nr);
+      spiel.neuerRekord = spiel.punkte > (s.spielBest || 0);
+      if (spiel.neuerRekord) s.spielBest = spiel.punkte;
+      spiel.phase = "ende";
+      speichern();
+    }
+    zeigePanel();
+    window.scrollTo(0, 0);
+  }
+
+  function spielBeenden() {
+    if (!spiel) return;
+    clearTimeout(spielTimer);
+    spiel = { nr: spiel.nr, phase: "start" };
+    zeigePanel();
+    const panel = document.getElementById("panel");
+    if (panel) panel.scrollIntoView({ block: "start" });
+  }
+
   // ---------- Steuerung ----------
 
   app.addEventListener("click", (e) => {
     const tabKnopf = e.target.closest("[data-tab]");
     if (tabKnopf) {
-      wechsleTab(tabKnopf.dataset.tab, false, tabKnopf.closest(".unten-leiste") ? "immer" : "wenn-verdeckt");
+      const immer = tabKnopf.closest(".unten-leiste, .blitz-start");
+      wechsleTab(tabKnopf.dataset.tab, false, immer ? "immer" : "wenn-verdeckt");
       return;
     }
     const el = e.target.closest("[data-aktion]");
@@ -884,6 +1137,20 @@
       case "quiz-weiter":
         quizWeiter();
         break;
+      case "spiel-start":
+        starteSpiel(lf, Number(el.dataset.anzahl));
+        zeigePanel();
+        window.scrollTo(0, 0);
+        break;
+      case "spiel-wahl":
+        spielWahl(Number(el.dataset.j));
+        break;
+      case "spiel-weiter":
+        spielWeiter();
+        break;
+      case "spiel-ende":
+        spielBeenden();
+        break;
     }
   });
 
@@ -919,6 +1186,20 @@
       } else if (e.key === "ArrowLeft" && deck.umgedreht) {
         e.preventDefault();
         bewerte(false);
+      }
+      return;
+    }
+
+    if (aktuell.tab === "spiel" && spiel && spiel.phase !== "start") {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        spielBeenden();
+      } else if (spiel.phase === "frage" && /^[1-9]$/.test(e.key)) {
+        e.preventDefault();
+        spielWahl(Number(e.key) - 1);
+      } else if (spiel.phase === "frage" && e.key === "Enter" && !aufKnopf) {
+        e.preventDefault();
+        spielWeiter();
       }
       return;
     }
@@ -994,7 +1275,7 @@
   app.addEventListener("pointercancel", wischEnde);
 
   function route() {
-    const treffer = /^#lf(\d{1,2})(?:-(lernstoff|karten|quiz))?$/.exec(location.hash);
+    const treffer = /^#lf(\d{1,2})(?:-(lernstoff|karten|quiz|spiel))?$/.exec(location.hash);
     const nr = treffer ? Number(treffer[1]) : 0;
     if (nr >= 1 && nr <= ANZAHL) zeigeLernfeld(nr, treffer[2]);
     else zeigeStart(aktuell && aktuell.nr);

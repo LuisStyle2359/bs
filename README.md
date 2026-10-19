@@ -5,6 +5,7 @@ Eine Lernseite für die Klasse 10KU, Kaufleute für Spedition und Logistikdienst
 - **Lernstoff**: Kapitel zum Nachlesen, jedes Kapitel lässt sich als gelesen abhaken
 - **Karteikarten**: Frage lesen, Karte umdrehen, dann „Gewusst“ oder „Nochmal“
 - **Quiz**: Multiple-Choice-Fragen mit Erklärung und Auswertung am Ende
+- **Blitzrunde**: ein schnelles Spiel mit 5 oder 10 gemischten Fragen aus Karteikarten und Quiz. Punkte, Tempo-Bonus und Serien; während der Runde ist alles andere ausgeblendet. Die Fragen entstehen automatisch, dafür muss nichts extra eingetragen werden.
 
 Der Lernfortschritt wird nur im eigenen Browser gespeichert (localStorage). Es gibt keine Anmeldung und keinen Server.
 

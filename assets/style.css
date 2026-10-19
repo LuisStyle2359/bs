@@ -701,8 +701,8 @@ img {
 
   .unten-leiste {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 4px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
     position: fixed;
     left: 0;
     right: 0;
@@ -739,6 +739,12 @@ img {
 .unten-knopf svg {
   width: 24px;
   height: 24px;
+}
+
+.unten-knopf span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .unten-knopf[aria-current="page"] {
@@ -915,6 +921,7 @@ img {
 }
 
 .toc button {
+  display: block;
   min-height: 36px;
   padding: 4px 0;
   border: 0;
@@ -1509,5 +1516,173 @@ kbd {
   .leiste-knoepfe .knopf {
     flex: 1;
     min-height: 40px;
+  }
+}
+
+/* ---------- Blitzrunde ---------- */
+
+.blitz-start {
+  justify-self: start;
+  border-color: var(--tinte);
+  background: var(--tinte-hell);
+  color: var(--tinte);
+}
+
+.blitz-start svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Während einer Runde ist nur das Spiel zu sehen. */
+.seite.fokus .kopfzeile,
+.seite.fokus .zurueck,
+.seite.fokus .lf-kopf,
+.seite.fokus .tabs,
+.seite.fokus .nachbarn,
+.seite.fokus .fusszeile,
+.seite.fokus .unten-leiste {
+  display: none;
+}
+
+.seite.fokus.mit-leiste {
+  padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+}
+
+.seite.fokus .lf-seite {
+  padding-top: 8px;
+}
+
+.spiel-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.spiel-werte {
+  display: flex;
+  gap: 24px;
+}
+
+.spiel-wert {
+  display: grid;
+  justify-items: end;
+  line-height: 1.1;
+}
+
+.spiel-wert small {
+  font-family: var(--schrift-titel);
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.spiel-wert strong {
+  font-family: var(--schrift-titel);
+  font-weight: 700;
+  font-size: 1.875rem;
+  color: var(--tinte);
+  font-variant-numeric: tabular-nums;
+}
+
+.spiel-wert.heiss strong {
+  color: var(--gruen);
+  animation: plopp 0.3s ease-out;
+}
+
+.spiel-schritte {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 6px;
+}
+
+.spiel-schritte li {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--flaeche-2);
+}
+
+.spiel-schritte li.jetzt {
+  background: var(--tinte);
+}
+
+.spiel-schritte li.gut {
+  background: var(--gruen);
+}
+
+.spiel-schritte li.schlecht {
+  background: var(--rot);
+}
+
+.spiel-frage {
+  font-size: 1.3125rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.spiel-frage > :last-child {
+  margin-bottom: 0;
+}
+
+.spiel-plus {
+  padding: 12px 16px;
+  border: 1px solid var(--gruen);
+  border-radius: var(--radius);
+  background: var(--gruen-hell);
+  color: var(--gruen);
+  animation: plopp 0.3s ease-out;
+}
+
+.spiel-plus strong {
+  display: block;
+  font-family: var(--schrift-titel);
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.spiel-plus span {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.wackelt {
+  animation: wackeln 0.35s ease-in-out;
+}
+
+@keyframes plopp {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+}
+
+@keyframes wackeln {
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@media (max-width: 600px) {
+  .spiel-frage {
+    font-size: 1.1875rem;
+  }
+
+  .blitz-start {
+    justify-self: stretch;
+    min-height: 48px;
   }
 }
